@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
 
   const { whatsapp, adminPassword } = body;
 
-  if (adminPassword !== process.env.ADMIN_PASSWORD) {
+  if (adminPassword !== (process.env.ADMIN_PASSWORD || "admin2026")) {
     return NextResponse.json({ error: "Contraseña de admin incorrecta" }, { status: 401 });
   }
 

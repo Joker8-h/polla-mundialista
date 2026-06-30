@@ -6,7 +6,8 @@ export async function POST(req: NextRequest) {
   catch { return NextResponse.json({ error: "JSON inválido" }, { status: 400 }); }
 
   const { password } = body;
-  if (password === process.env.ADMIN_PASSWORD) {
+  const adminPassword = process.env.ADMIN_PASSWORD || "admin2026";
+  if (password === adminPassword) {
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: "Contraseña incorrecta" }, { status: 401 });

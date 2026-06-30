@@ -11,7 +11,7 @@ export async function register() {
       parseEventDate,
     } = await import("@/lib/bzzoiro");
     const { calculatePoints, calculatePlayerGoalPoints } = await import("@/lib/scoring");
-    const { colombiaWeekRange, nowColombia, toColombiaDate } = await import("@/lib/colombia-time");
+    const { toColombiaDate, getWeekForColombiaDate, nowColombia } = await import("@/lib/colombia-time");
 
     function mapStatus(bzStatus: string): string {
       if (bzStatus === "finished" || bzStatus === "ended") return "finished";
@@ -31,31 +31,23 @@ export async function register() {
       return true;
     }
 
-    async function getOrCreateWeek() {
-      let week = await prisma.week.findFirst({ where: { isActive: true, isClosed: false } });
+    async function ensureWeekForDate(colDateStr: string) {
+      const { startDate, endDate } = getWeekForColombiaDate(colDateStr);
+      let week = await prisma.week.findFirst({
+        where: { startDate, endDate },
+      });
       if (!week) {
-        const { startDate, endDate } = colombiaWeekRange();
         const lastWeek = await prisma.week.findFirst({ orderBy: { number: "desc" } });
-        try {
-          week = await prisma.week.create({
-            data: {
-              number: (lastWeek?.number || 0) + 1,
-              startDate,
-              endDate,
-            },
-          });
-        } catch {
-          week = await prisma.week.findFirst({ where: { isActive: true, isClosed: false } });
-        }
-        if (week) console.log(`[Sync] Semana ${week.number} creada`);
+        week = await prisma.week.create({
+          data: {
+            number: (lastWeek?.number || 0) + 1,
+            startDate,
+            endDate,
+          },
+        });
+        console.log(`[Sync] Semana ${week.number} creada para ${colDateStr}`);
       }
       return week;
-    }
-
-    async function ensureWeek() {
-      const w = await getOrCreateWeek();
-      if (!w) throw new Error("No se pudo crear/encontrar semana activa");
-      return w;
     }
 
     async function scoreMatch(bzzoiroEventId: number, matchId: string) {
@@ -110,7 +102,6 @@ export async function register() {
 
     async function syncAll() {
       try {
-        const week = await ensureWeek();
         const now = nowColombia();
         const daysToSync = [-1, 0, 1, 2, 3];
         const allEvents = await fetchAllSeasonMatches();
@@ -123,6 +114,8 @@ export async function register() {
             const colDate = toColombiaDate(parseEventDate(e.event_date));
             return colDate === dateStr;
           });
+
+          const week = await ensureWeekForDate(dateStr);
 
           for (const event of events) {
             if (!isValidTeam(event.home_team) || !isValidTeam(event.away_team)) continue;
@@ -153,7 +146,6 @@ export async function register() {
             } else {
               const updateData: Record<string, unknown> = {
                 status,
-                weekId: week.id,
                 homeTeam: event.home_team,
                 awayTeam: event.away_team,
                 homeTeamId: event.home_team_id,
@@ -162,6 +154,10 @@ export async function register() {
                 awayScore: status !== "scheduled" ? (event.away_score ?? null) : existing.awayScore,
                 currentMinute: event.current_minute ?? existing.currentMinute,
               };
+
+              if (existing.weekId !== week.id) {
+                updateData.weekId = week.id;
+              }
 
               if (status === "finished" && existing.status !== "finished") {
                 try {
@@ -197,12 +193,6 @@ export async function register() {
               }
             }
           }
-        }
-
-        if (now >= week.endDate && !week.isClosed) {
-          const { closeWeekAndAssignPrizes } = await import("@/lib/week-closer");
-          const result = await closeWeekAndAssignPrizes(week.id);
-          console.log(`[Sync] ${result.message}`);
         }
       } catch (err) {
         console.error("[Sync] Error en sync:", err);

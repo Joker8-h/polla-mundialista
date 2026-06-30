@@ -76,6 +76,15 @@ export function formatColombianDateShort(date: Date | string): string {
   }).format(new Date(date));
 }
 
+export function getWeekForColombiaDate(dateStr: string): { startDate: Date; endDate: Date } {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const colDayOfWeek = new Date(`${dateStr}T12:00:00-05:00`).getUTCDay();
+  const monOffset = colDayOfWeek === 0 ? 6 : colDayOfWeek - 1;
+  const startDate = new Date(Date.UTC(y, m - 1, d - monOffset, 5, 0, 0, 0));
+  const endDate = new Date(Date.UTC(y, m - 1, d - monOffset + 6, 4, 59, 59, 999));
+  return { startDate, endDate };
+}
+
 export function getWeekDays(weekStart: Date | string, weekEnd: Date | string): string[] {
   const days: string[] = [];
   const start = new Date(weekStart);

@@ -13,4 +13,4 @@ RUN npx prisma generate && npm run build
 
 EXPOSE 3000
 
-CMD npx prisma db push --skip-generate && npm run start
+CMD npx prisma db push --skip-generate && npx tsx scripts/seed-admin.ts && npm run start

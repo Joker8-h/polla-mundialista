@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  whatsapp  String   @unique
+  city      String
+  password  String?
+  otpCode   String?
+  otpExpiry DateTime?
+  verified  Boolean  @default(false)
+  isActive  Boolean   @default(true)
+  createdAt DateTime @default(now())
+
+  payments         Payment[]
+  dayPasses        DayPass[]
+  extraPurchases   ExtraPredictionPurchase[]
+  predictions      Prediction[]
+  weeklyWinners    WeeklyWinner[]
+  playerPredictions PlayerGoalPrediction[]
+}
+
+model Week {
+  id        String   @id @default(cuid())
+  number    Int
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(true)
+  isClosed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  matches  Match[]
+  winners  WeeklyWinner[]
+  prizes   WeekPrize[]
+}
+
+model Match {
+  id          String   @id @default(cuid())
+  weekId      String
+  apiMatchId  Int      @unique
+  homeTeam    String
+  awayTeam    String
+  homeTeamId  Int
+  awayTeamId  Int
+  matchDate   DateTime
+  status      String   @default("scheduled")
+  groupName   String?
+  roundNumber Int?
+
+  // Results (filled by API automatically)
+  homeScore    Int?
+  awayScore    Int?
+  totalShots   Int?
+  shotsOnGoal  Int?
+  fouls        Int?
+  yellowCards  Int?
+  redCards     Int?
+  saves        Int?
+  accuratePass Int?
+  totalCross   Int?
+  substitutions Int?
+  currentMinute Int?
+
+  week       Week                   @relation(fields: [weekId], references: [id])
+  predictions Prediction[]
+  extraPredictionPurchases ExtraPredictionPurchase[]
+  playerGoalPredictions PlayerGoalPrediction[]
+
+  @@index([weekId])
+  @@index([matchDate])
+  @@index([weekId, matchDate])
+  @@index([status])
+}
+
+model DayPass {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime
+  paymentId String
+  createdAt DateTime @default(now())
+
+  user          User         @relation(fields: [userId], references: [id])
+  payment       Payment      @relation(fields: [paymentId], references: [id])
+  predictions   Prediction[]
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model ExtraPredictionPurchase {
+  id        String   @id @default(cuid())
+  userId    String
+  matchId   String
+  amount    Int      @default(2000)
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id])
+  match       Match        @relation(fields: [matchId], references: [id])
+  predictions Prediction[]
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int
+  type      String   // "daily", "weekly", "extra_prediction"
+  wompiId   String?
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  paidAt    DateTime?
+
+  user        User        @relation(fields: [userId], references: [id])
+  dayPasses   DayPass[]
+}
+
+model Prediction {
+  id              String   @id @default(cuid())
+  userId          String
+  matchId         String
+  type            String   @default("base") // "base" or "extra"
+  dayPassId       String?
+  extraPurchaseId  String?
+
+  homeScore     Int
+  awayScore     Int
+  winner        String?  // "home", "away", "draw"
+  goalscorer    String?
+  totalShots    Int
+  shotsOnGoal   Int
+  saves         Int
+  fouls         Int
+  yellowCards   Int
+  redCards      Int
+  substitutions Int
+  accuratePass  Int
+  totalCross    Int
+
+  // Points earned
+  homeScorePts   Int @default(0)
+  winnerPts      Int @default(0)
+  goalscorerPts  Int @default(0)
+  totalShotsPts  Int @default(0)
+  shotsOnGoalPts Int @default(0)
+  savesPts       Int @default(0)
+  foulsPts       Int @default(0)
+  yellowCardsPts Int @default(0)
+  redCardsPts    Int @default(0)
+  substitutionsPts Int @default(0)
+  accuratePassPts Int @default(0)
+  totalCrossPts  Int @default(0)
+  totalPoints    Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match         Match                     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  dayPass       DayPass?                  @relation(fields: [dayPassId], references: [id])
+  extraPurchase ExtraPredictionPurchase?  @relation(fields: [extraPurchaseId], references: [id])
+
+  @@unique([userId, matchId, type])
+  @@index([userId])
+  @@index([matchId])
+  @@index([matchId, type])
+  @@index([matchId, totalPoints])
+}
+
+model PlayerGoalPrediction {
+  id        String @id @default(cuid())
+  userId    String
+  matchId   String
+  playerId  Int
+  playerName String
+  teamId    Int
+  goals     Int    // 0, 1, 2, 3 (3 = 3+)
+  points    Int    @default(0)
+
+  user  User  @relation(fields: [userId], references: [id])
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@unique([userId, matchId, playerId])
+}
+
+model WeekPrize {
+  id          String   @id @default(cuid())
+  weekId      String
+  rank        Int      // 1-10
+  label       String   // e.g., "Juguete", "$100.000", "10% dcto"
+  type        String   // "toy", "cash", "discount", "free_ticket"
+  value       Int?     // monetary value for cash type
+  unit        String?  // "percent" for discounts
+  minPurchase Int?     // minimum purchase for discounts
+  imageUrl    String?  // Cloudinary image URL
+  createdAt   DateTime @default(now())
+
+  week Week @relation(fields: [weekId], references: [id])
+
+  @@unique([weekId, rank])
+}
+
+model WeeklyWinner {
+  id        String   @id @default(cuid())
+  weekId    String
+  userId    String
+  rank      Int
+  code      String   @unique
+  claimed   Boolean  @default(false)
+  claimedAt DateTime?
+  invalidatedAt DateTime?
+  createdAt DateTime @default(now())
+
+  week Week @relation(fields: [weekId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime?
+}
+
+model PlayerCache {
+  id        Int      @id
+  name      String
+  shortName String
+  teamId    Int
+  position  String?
+  imageUrl  String?
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId])
+}

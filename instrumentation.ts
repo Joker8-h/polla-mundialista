@@ -8,32 +8,17 @@ export async function register() {
       getTeamAggregateStats,
       getTotalSubstitutions,
       getGoalScorers,
+      parseEventDate,
     } = await import("@/lib/bzzoiro");
     const { calculatePoints, calculatePlayerGoalPoints } = await import("@/lib/scoring");
-    const { toColombiaDate } = await import("@/lib/colombia-time");
+    const { colombiaWeekRange, nowColombia, toColombiaDate } = await import("@/lib/colombia-time");
 
-    // ─── Helpers ────────────────────────────────────────────────────────────────
-
-    /** Convierte un status de Bzzoiro a nuestro enum interno */
     function mapStatus(bzStatus: string): string {
       if (bzStatus === "finished" || bzStatus === "ended") return "finished";
-      if (
-        bzStatus === "live" ||
-        bzStatus === "inprogress" ||
-        bzStatus === "halftime" ||
-        bzStatus === "HT" ||
-        bzStatus === "1H" ||
-        bzStatus === "2H" ||
-        bzStatus === "1st_half" ||
-        bzStatus === "2nd_half" ||
-        bzStatus === "extra_time" ||
-        bzStatus === "penalty"
-      )
-        return "live";
+      if (["live","inprogress","halftime","HT","1H","2H","1st_half","2nd_half","extra_time","penalty"].includes(bzStatus)) return "live";
       return "scheduled";
     }
 
-    /** Filtra equipos placeholder de rondas eliminatorias futuras */
     function isValidTeam(name: string): boolean {
       const n = (name || "").trim();
       if (!n) return false;
@@ -46,49 +31,17 @@ export async function register() {
       return true;
     }
 
-    /** Obtiene la fecha en formato YYYY-MM-DD en zona Colombia (UTC-5) */
-    function getMonday(colDayOfWeek: number): number {
-      return colDayOfWeek === 0 ? 6 : colDayOfWeek - 1;
-    }
-
-    function todayBogota(): string {
-      return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
-    }
-
-    /** Obtiene fecha en zona Colombia (UTC-5) */
-    function nowColombia(): Date {
-      const now = new Date();
-      const dateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(now);
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Bogota",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }).formatToParts(now);
-      const h = parts.find(p => p.type === "hour")?.value || "00";
-      const m = parts.find(p => p.type === "minute")?.value || "00";
-      const s = parts.find(p => p.type === "second")?.value || "00";
-      return new Date(`${dateStr}T${h}:${m}:${s}-05:00`);
-    }
-
-    /** Obtiene o crea la semana activa */
     async function getOrCreateWeek() {
       let week = await prisma.week.findFirst({ where: { isActive: true, isClosed: false } });
       if (!week) {
-        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
-        const [y, m, d] = todayStr.split("-").map(Number);
-        const colDayOfWeek = new Date(`${todayStr}T12:00:00-05:00`).getUTCDay();
-        const monOffset = getMonday(colDayOfWeek);
-        const weekStart = new Date(Date.UTC(y, m - 1, d - monOffset, 5, 0, 0, 0));
-        const weekEnd = new Date(Date.UTC(y, m - 1, d - monOffset + 6, 4, 59, 59, 0));
+        const { startDate, endDate } = colombiaWeekRange();
         const lastWeek = await prisma.week.findFirst({ orderBy: { number: "desc" } });
         try {
           week = await prisma.week.create({
             data: {
               number: (lastWeek?.number || 0) + 1,
-              startDate: weekStart,
-              endDate: weekEnd,
+              startDate,
+              endDate,
             },
           });
         } catch {
@@ -105,8 +58,6 @@ export async function register() {
       return w;
     }
 
-    // ─── Scoring ────────────────────────────────────────────────────────────────
-
     async function scoreMatch(bzzoiroEventId: number, matchId: string) {
       try {
         const [incidents, match] = await Promise.all([
@@ -118,7 +69,6 @@ export async function register() {
         const scorersNames = allScorers.map((s) => s.player);
         const predictions = await prisma.prediction.findMany({ where: { matchId } });
         const playerPredictions = await prisma.playerGoalPrediction.findMany({ where: { matchId } });
-
         for (const p of predictions) {
           const pts = calculatePoints(p, match, scorersNames);
           await prisma.prediction.update({ where: { id: p.id }, data: { ...pts } });
@@ -143,8 +93,7 @@ export async function register() {
           let homeScorePts = 0;
           let winnerPts = 0;
           if (p.homeScore === match.homeScore && p.awayScore === match.awayScore) { homeScorePts = 10; totalPoints += 10; }
-          const predictedWinner =
-            p.homeScore > p.awayScore ? "home" : p.homeScore < p.awayScore ? "away" : "draw";
+          const predictedWinner = p.homeScore > p.awayScore ? "home" : p.homeScore < p.awayScore ? "away" : "draw";
           const h = match.homeScore ?? 0;
           const a = match.awayScore ?? 0;
           const actualWinner = h > a ? "home" : h < a ? "away" : "draw";
@@ -159,38 +108,27 @@ export async function register() {
       }
     }
 
-    // ─── Main sync ──────────────────────────────────────────────────────────────
-
     async function syncAll() {
       try {
         const week = await ensureWeek();
-
-        // Sync partidos de los próximos 3 días + hoy + ayer (para no perder finalizados)
         const now = nowColombia();
         const daysToSync = [-1, 0, 1, 2, 3];
-
-        // Fetch all 104 WC2026 matches once, filter by date locally
         const allEvents = await fetchAllSeasonMatches();
 
-        const dayResults = daysToSync.map((offset) => {
+        for (const offset of daysToSync) {
           const date = new Date(now);
           date.setDate(date.getDate() + offset);
           const dateStr = toColombiaDate(date);
           const events = allEvents.filter((e) => {
-            const eventDate = new Date(e.event_date);
-            const colDate = toColombiaDate(eventDate);
+            const colDate = toColombiaDate(parseEventDate(e.event_date));
             return colDate === dateStr;
           });
-          return { dateStr, events };
-        });
-        for (const { dateStr, events } of dayResults) {
 
           for (const event of events) {
-            // Saltar equipos placeholder (rondas eliminatorias sin equipos definidos)
             if (!isValidTeam(event.home_team) || !isValidTeam(event.away_team)) continue;
 
             const status = mapStatus(event.status);
-            const matchDate = new Date(event.event_date);
+            const matchDate = parseEventDate(event.event_date);
             const existing = await prisma.match.findUnique({ where: { apiMatchId: event.id } });
 
             if (!existing) {
@@ -213,7 +151,6 @@ export async function register() {
               });
               console.log(`[Sync] Creado: ${event.home_team} vs ${event.away_team} (${dateStr})`);
             } else {
-              // Actualizar equipo, estado y marcador
               const updateData: Record<string, unknown> = {
                 status,
                 weekId: week.id,
@@ -227,7 +164,6 @@ export async function register() {
               };
 
               if (status === "finished" && existing.status !== "finished") {
-                // Intentar obtener stats de Bzzoiro
                 try {
                   const [stats, incidents] = await Promise.all([
                     fetchPlayerStats(event.id).catch(() => []),
@@ -246,11 +182,10 @@ export async function register() {
                     totalCross: homeStats.totalCross + awayStats.totalCross,
                     substitutions: getTotalSubstitutions(incidents),
                   });
-                } catch { /* no stats */ }
+                } catch {}
 
                 await prisma.match.update({ where: { id: existing.id }, data: updateData });
 
-                // Calcular puntos de predicciones
                 try {
                   await scoreMatch(event.id, existing.id);
                 } catch {
@@ -264,7 +199,6 @@ export async function register() {
           }
         }
 
-        // Cerrar semana si ya pasó su fecha de fin
         if (now >= week.endDate && !week.isClosed) {
           const { closeWeekAndAssignPrizes } = await import("@/lib/week-closer");
           const result = await closeWeekAndAssignPrizes(week.id);

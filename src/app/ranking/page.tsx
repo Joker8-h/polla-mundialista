@@ -11,43 +11,32 @@ interface RankingEntry {
   points: number;
 }
 
-interface WeekInfo {
-  id: string;
-  number: number;
-  startDate: string;
-  endDate: string;
-  isClosed: boolean;
-}
-
 export default function RankingPage() {
   const router = useRouter();
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [weeks, setWeeks] = useState<WeekInfo[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
   const [currentWeekId, setCurrentWeekId] = useState<string | null>(null);
+  const [previousWeekId, setPreviousWeekId] = useState<string | null>(null);
+  const [selectedWeekId, setSelectedWeekId] = useState<string | null>(null);
 
-  async function fetchWeeks() {
+  async function fetchData() {
     try {
-      const [currentRes, historyRes] = await Promise.all([
-        fetch("/api/weeks/current"),
-        fetch("/api/weeks/history"),
-      ]);
+      const currentRes = await fetch("/api/weeks/current");
       const currentData = await currentRes.json();
+
+      const historyRes = await fetch("/api/weeks/history");
       const historyData = await historyRes.json();
-      const allWeeks = (historyData.weeks || []) as WeekInfo[];
-      if (currentData.week) {
-        const alreadyIn = allWeeks.some((w: WeekInfo) => w.id === currentData.week.id);
-        if (!alreadyIn) allWeeks.unshift(currentData.week);
-        if (!selectedWeek) {
-          setSelectedWeek(currentData.week.id);
-          setCurrentWeekId(currentData.week.id);
-        }
-      } else {
-        const lastClosed = allWeeks.find((w: WeekInfo) => w.isClosed);
-        if (lastClosed && !selectedWeek) setSelectedWeek(lastClosed.id);
+      const closedWeeks = (historyData.weeks || []) as { id: string; number: number; startDate: string; endDate: string; isClosed: boolean }[];
+
+      const curId = currentData.week?.id || null;
+      const prevId = closedWeeks.length > 0 ? closedWeeks[0].id : null;
+
+      setCurrentWeekId(curId);
+      setPreviousWeekId(prevId);
+
+      if (!selectedWeekId) {
+        setSelectedWeekId(curId || prevId);
       }
-      setWeeks(allWeeks);
     } catch {}
   }
 
@@ -64,23 +53,15 @@ export default function RankingPage() {
   }
 
   useEffect(() => {
-    fetchWeeks();
+    fetchData();
   }, []);
 
   useEffect(() => {
-    if (selectedWeek) fetchRankings(selectedWeek);
-  }, [selectedWeek]);
+    if (selectedWeekId) fetchRankings(selectedWeekId);
+  }, [selectedWeekId]);
 
   const topThree = rankings.slice(0, 3);
-  const currentWeek = weeks.find((w) => w.id === selectedWeek);
-  const isLiveWeek = selectedWeek === currentWeekId;
-  const previousWeek = weeks.find((w) => w.id !== currentWeekId && w.isClosed);
-
-  function weekLabel(w: WeekInfo) {
-    const start = new Date(w.startDate).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
-    const end = new Date(w.endDate).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
-    return `${start} - ${end}`;
-  }
+  const isLiveWeek = selectedWeekId === currentWeekId;
 
   return (
     <div className="min-h-screen lg:flex bg-ranking">
@@ -91,7 +72,7 @@ export default function RankingPage() {
             <div>
               <p className="text-xs uppercase lg:hidden" style={{color:'rgba(255,105,180,0.5)'}}>Fantasy Mundial</p>
               <h1 className="text-lg font-bold text-white">Clasificación</h1>
-              <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>{isLiveWeek ? "Semana actual en vivo" : `Semana cerrada`}</p>
+              <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>{isLiveWeek ? "Semana actual en vivo" : "Semana anterior"}</p>
             </div>
             <button onClick={() => router.push("/dashboard")} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
               Partidos
@@ -101,8 +82,7 @@ export default function RankingPage() {
           <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
             {currentWeekId && (
               <button
-                key="current"
-                onClick={() => setSelectedWeek(currentWeekId)}
+                onClick={() => setSelectedWeekId(currentWeekId)}
                 className="shrink-0 rounded-xl px-5 py-2 text-xs font-bold whitespace-nowrap transition-all"
                 style={isLiveWeek
                   ? { background: 'linear-gradient(135deg,#ff1493,#c500ff)', color: '#fff', boxShadow: '0 4px 12px rgba(255,20,147,0.4)' }
@@ -111,12 +91,11 @@ export default function RankingPage() {
                 🔴 Semana actual
               </button>
             )}
-            {previousWeek && (
+            {previousWeekId && (
               <button
-                key="previous"
-                onClick={() => setSelectedWeek(previousWeek.id)}
+                onClick={() => setSelectedWeekId(previousWeekId)}
                 className="shrink-0 rounded-xl px-5 py-2 text-xs font-bold whitespace-nowrap transition-all"
-                style={!isLiveWeek && selectedWeek === previousWeek.id
+                style={!isLiveWeek && selectedWeekId === previousWeekId
                   ? { background: 'linear-gradient(135deg,#ff1493,#c500ff)', color: '#fff', boxShadow: '0 4px 12px rgba(255,20,147,0.4)' }
                   : { background: 'rgba(255,0,255,0.05)', border: '1px solid rgba(255,0,255,0.15)', color: 'rgba(255,105,180,0.5)' }}
               >

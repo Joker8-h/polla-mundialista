@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { colombiaMidnight, toColombiaDate } from "@/lib/colombia-time";
+import { colombiaDayStart, toColombiaDate } from "@/lib/colombia-time";
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     if (payment.type === "daily") {
       const paymentDate = toColombiaDate(payment.createdAt);
-      const day = colombiaMidnight(paymentDate);
+      const day = colombiaDayStart(paymentDate);
       await prisma.dayPass.upsert({
         where: { userId_date: { userId: payment.userId, date: day } },
         update: {},

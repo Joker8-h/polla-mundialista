@@ -54,16 +54,6 @@ function LoadingScreen({ label }: { label: string }) {
   );
 }
 
-function getWeekDays(startDate: string, endDate: string): string[] {
-  const days: string[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    days.push(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(d));
-  }
-  return days;
-}
-
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -76,6 +66,20 @@ function DashboardContent() {
   const [paying, setPaying] = useState(false);
   const [paidMsg, setPaidMsg] = useState(paidParam);
   const [week, setWeek] = useState<WeekInfo | null>(null);
+
+  function todayCol(): string {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+  }
+
+  function getWeekDays(startDate: string, endDate: string): string[] {
+    const days: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      days.push(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(d));
+    }
+    return days;
+  }
 
   async function fetchData() {
     try {
@@ -93,6 +97,7 @@ function DashboardContent() {
       const rankData = await rankRes.json();
       setMatches(matchData.matches || []);
       setRankings(rankData.rankings || []);
+      if (matchData.paidDays) setPaidDays(matchData.paidDays);
     } catch {}
     setLoading(false);
   }
@@ -105,8 +110,7 @@ function DashboardContent() {
 
   useEffect(() => {
     if (matches.length > 0 && !selectedDay) {
-      const todayCol = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
-      setSelectedDay(todayCol);
+      setSelectedDay(todayCol());
     }
   }, [matches, selectedDay]);
 

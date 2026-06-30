@@ -89,7 +89,6 @@ export default function MisPremiosPage() {
         )}
       </div>
 
-      {/* Ticket Modal */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelected(null)}>
           <div className="w-full max-w-sm rounded-3xl overflow-hidden" style={{background:'linear-gradient(160deg, #1a0013 0%, #0a0008 100%)', border:'1px solid rgba(255,0,255,0.3)', boxShadow:'0 20px 50px rgba(255,20,147,0.3)'}} onClick={(e) => e.stopPropagation()}>

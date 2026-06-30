@@ -12,12 +12,13 @@ async function syncMatches() {
   const todayStr = todayColombia();
   const [y, m, d] = todayStr.split("-").map(Number);
   const colDayOfWeek = new Date(`${todayStr}T12:00:00-05:00`).getUTCDay();
+  const monOffset = colDayOfWeek === 0 ? 6 : colDayOfWeek - 1;
   const now = new Date(`${todayStr}T${new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date())}-05:00`);
 
   let week = await prisma.week.findFirst({ where: { isActive: true, isClosed: false } });
   if (!week) {
-    const weekStart = new Date(Date.UTC(y, m - 1, d - colDayOfWeek, 5, 0, 0, 0));
-    const weekEnd = new Date(Date.UTC(y, m - 1, d - colDayOfWeek + 6, 4, 59, 59, 0));
+    const weekStart = new Date(Date.UTC(y, m - 1, d - monOffset, 5, 0, 0, 0));
+    const weekEnd = new Date(Date.UTC(y, m - 1, d - monOffset + 6, 4, 59, 59, 0));
     const lastWeek = await prisma.week.findFirst({ orderBy: { number: "desc" } });
     week = await prisma.week.create({
       data: { number: (lastWeek?.number || 0) + 1, startDate: weekStart, endDate: weekEnd },

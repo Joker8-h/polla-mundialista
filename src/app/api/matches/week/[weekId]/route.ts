@@ -8,7 +8,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ weekId:
     if (!week) return NextResponse.json({ error: "Semana no encontrada" }, { status: 404 });
 
     const matches = await prisma.match.findMany({
-      where: { weekId },
+      where: {
+        matchDate: {
+          gte: week.startDate,
+          lte: week.endDate,
+        },
+      },
       orderBy: { matchDate: "asc" },
     });
 

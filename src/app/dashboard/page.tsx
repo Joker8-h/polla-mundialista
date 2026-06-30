@@ -158,7 +158,7 @@ function DashboardContent() {
     <AppShell active="Partidos">
       <main className="min-w-0 flex-1">
         <div className="mx-auto max-w-[1500px] px-4 py-5 lg:px-6">
-          <HeaderBar title="Fantasy Mundial" subtitle={`Semana ${week?.number || "-"} en vivo`} />
+          <HeaderBar title="Fantasy Mundial" subtitle="Predice y gana premios semanales" />
 
           {paidMsg && (
             <div className="mb-4 rounded-xl px-4 py-3 text-sm" style={{background:'rgba(255,20,147,0.15)', border:'1px solid rgba(255,20,147,0.3)', color:'#ff69b4'}}>
@@ -235,7 +235,7 @@ function DashboardContent() {
               <section className="rounded-2xl p-4" style={{background:'rgba(18,0,13,0.7)', border:'1px solid rgba(255,0,255,0.1)'}}>
                 <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <h2 className="text-base font-bold text-white">Calendario Semana {week.number}</h2>
+                    <h2 className="text-base font-bold text-white">Calendario de la semana</h2>
                     <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>{weekDays[0] ? new Date(weekDays[0]+"T12:00:00-05:00").toLocaleDateString("es-CO",{day:"numeric",month:"short"}) : ""} - {weekDays[weekDays.length-1] ? new Date(weekDays[weekDays.length-1]+"T12:00:00-05:00").toLocaleDateString("es-CO",{day:"numeric",month:"short"}) : ""}</p>
                   </div>
                   <span className="rounded-lg px-2.5 py-1 text-xs font-bold" style={{background:'rgba(255,0,255,0.05)', color: isDayPaid ? '#ff69b4' : 'rgba(255,105,180,0.5)'}}>
@@ -251,7 +251,7 @@ function DashboardContent() {
             </section>
 
             <aside className="space-y-5">
-              <RankingPanel rankings={rankings} weekNumber={week.number} onOpen={() => router.push("/ranking")} />
+              <RankingPanel rankings={rankings} onOpen={() => router.push("/ranking")} />
               <UpcomingPanel matches={matches.slice(0, 5)} onOpen={(id) => router.push(`/match/${id}`)} />
               <InfoPanel />
             </aside>
@@ -455,11 +455,11 @@ function MetricCard({ label, value, accent = "pink" }: { label: string; value: n
   );
 }
 
-function RankingPanel({ rankings, weekNumber, onOpen }: { rankings: RankingEntry[]; weekNumber: number; onOpen: () => void }) {
+function RankingPanel({ rankings, onOpen }: { rankings: RankingEntry[]; onOpen: () => void }) {
   return (
     <section className="rounded-2xl p-4" style={{background:'rgba(18,0,13,0.7)', border:'1px solid rgba(255,0,255,0.1)'}}>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-base font-bold text-white">Clasificación Semana {weekNumber}</h2>
+        <h2 className="text-base font-bold text-white">Clasificación</h2>
         <button onClick={onOpen} className="text-xs font-bold hover:opacity-80" style={{color:'#ff69b4'}}>Ver completa</button>
       </div>
       <div className="space-y-2">

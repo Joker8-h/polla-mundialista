@@ -43,6 +43,9 @@ export default function RankingPage() {
           setSelectedWeek(currentData.week.id);
           setCurrentWeekId(currentData.week.id);
         }
+      } else {
+        const lastClosed = allWeeks.find((w: WeekInfo) => w.isClosed);
+        if (lastClosed && !selectedWeek) setSelectedWeek(lastClosed.id);
       }
       setWeeks(allWeeks);
     } catch {}
@@ -71,11 +74,12 @@ export default function RankingPage() {
   const topThree = rankings.slice(0, 3);
   const currentWeek = weeks.find((w) => w.id === selectedWeek);
   const isLiveWeek = selectedWeek === currentWeekId;
+  const previousWeek = weeks.find((w) => w.id !== currentWeekId && w.isClosed);
 
   function weekLabel(w: WeekInfo) {
     const start = new Date(w.startDate).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
     const end = new Date(w.endDate).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
-    return `Semana ${w.number} (${start} - ${end})`;
+    return `${start} - ${end}`;
   }
 
   return (
@@ -95,22 +99,30 @@ export default function RankingPage() {
           </header>
 
           <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-            {weeks.map((w) => {
-              const isActive = w.id === selectedWeek;
-              const isCurrent = w.id === currentWeekId;
-              return (
-                <button
-                  key={w.id}
-                  onClick={() => setSelectedWeek(w.id)}
-                  className="shrink-0 rounded-xl px-4 py-2 text-xs font-bold whitespace-nowrap transition-all"
-                  style={isActive
-                    ? { background: 'linear-gradient(135deg,#ff1493,#c500ff)', color: '#fff', boxShadow: '0 4px 12px rgba(255,20,147,0.4)' }
-                    : { background: 'rgba(255,0,255,0.05)', border: '1px solid rgba(255,0,255,0.15)', color: isCurrent ? '#ff69b4' : 'rgba(255,105,180,0.5)' }}
-                >
-                  {isCurrent ? "🔴 " : ""}Semana {w.number}
-                </button>
-              );
-            })}
+            {currentWeekId && (
+              <button
+                key="current"
+                onClick={() => setSelectedWeek(currentWeekId)}
+                className="shrink-0 rounded-xl px-5 py-2 text-xs font-bold whitespace-nowrap transition-all"
+                style={isLiveWeek
+                  ? { background: 'linear-gradient(135deg,#ff1493,#c500ff)', color: '#fff', boxShadow: '0 4px 12px rgba(255,20,147,0.4)' }
+                  : { background: 'rgba(255,0,255,0.05)', border: '1px solid rgba(255,0,255,0.15)', color: '#ff69b4' }}
+              >
+                🔴 Semana actual
+              </button>
+            )}
+            {previousWeek && (
+              <button
+                key="previous"
+                onClick={() => setSelectedWeek(previousWeek.id)}
+                className="shrink-0 rounded-xl px-5 py-2 text-xs font-bold whitespace-nowrap transition-all"
+                style={!isLiveWeek && selectedWeek === previousWeek.id
+                  ? { background: 'linear-gradient(135deg,#ff1493,#c500ff)', color: '#fff', boxShadow: '0 4px 12px rgba(255,20,147,0.4)' }
+                  : { background: 'rgba(255,0,255,0.05)', border: '1px solid rgba(255,0,255,0.15)', color: 'rgba(255,105,180,0.5)' }}
+              >
+                Semana anterior
+              </button>
+            )}
           </div>
 
           {loading ? (
@@ -118,7 +130,7 @@ export default function RankingPage() {
           ) : (
             <div className="grid gap-5 xl:grid-cols-[390px_minmax(0,1fr)]">
               <section className="rounded-2xl p-5" style={{background:'rgba(18,0,13,0.7)', border:'1px solid rgba(255,0,255,0.12)'}}>
-                <h2 className="mb-5 text-base font-bold text-white">Podio {currentWeek ? `Semana ${currentWeek.number}` : ""}</h2>
+                <h2 className="mb-5 text-base font-bold text-white">Podio {isLiveWeek ? "semana actual" : "semana anterior"}</h2>
                 {topThree.length > 0 ? (
                   <div className="space-y-3">
                     {topThree.map((entry, index) => (

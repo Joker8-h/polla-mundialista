@@ -47,6 +47,10 @@ export async function register() {
     }
 
     /** Obtiene la fecha en formato YYYY-MM-DD en zona Colombia (UTC-5) */
+    function getMonday(colDayOfWeek: number): number {
+      return colDayOfWeek === 0 ? 6 : colDayOfWeek - 1;
+    }
+
     function todayBogota(): string {
       return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
     }
@@ -75,8 +79,9 @@ export async function register() {
         const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
         const [y, m, d] = todayStr.split("-").map(Number);
         const colDayOfWeek = new Date(`${todayStr}T12:00:00-05:00`).getUTCDay();
-        const weekStart = new Date(Date.UTC(y, m - 1, d - colDayOfWeek, 5, 0, 0, 0));
-        const weekEnd = new Date(Date.UTC(y, m - 1, d - colDayOfWeek + 6, 4, 59, 59, 0));
+        const monOffset = getMonday(colDayOfWeek);
+        const weekStart = new Date(Date.UTC(y, m - 1, d - monOffset, 5, 0, 0, 0));
+        const weekEnd = new Date(Date.UTC(y, m - 1, d - monOffset + 6, 4, 59, 59, 0));
         const lastWeek = await prisma.week.findFirst({ orderBy: { number: "desc" } });
         try {
           week = await prisma.week.create({
@@ -211,6 +216,7 @@ export async function register() {
               // Actualizar equipo, estado y marcador
               const updateData: Record<string, unknown> = {
                 status,
+                weekId: week.id,
                 homeTeam: event.home_team,
                 awayTeam: event.away_team,
                 homeTeamId: event.home_team_id,

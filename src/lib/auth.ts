@@ -58,8 +58,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 });
 
 const AUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-if (!AUTH_SECRET) {
-  throw new Error("AUTH_SECRET no configurado. Define AUTH_SECRET o NEXTAUTH_SECRET en el entorno.");
+if (!AUTH_SECRET && process.env.NODE_ENV === "development") {
+  console.warn("AUTH_SECRET no configurado. Funciones de auth devolverán null.");
 }
 
 export async function getAdminFromReq(req: Request): Promise<string | null> {
@@ -77,6 +77,8 @@ export async function getAdminFromReq(req: Request): Promise<string | null> {
 }
 
 export async function getUserIdFromReq(req: Request): Promise<string | null> {
+  if (!AUTH_SECRET) return null;
+
   const cookieHeader = req.headers.get("cookie") || "";
   const url = req.url || "";
   const isSecure = url.startsWith("https") || cookieHeader.includes("__Secure-");

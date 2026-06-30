@@ -57,9 +57,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
 });
 
-const AUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-if (!AUTH_SECRET && process.env.NODE_ENV === "development") {
-  console.warn("AUTH_SECRET no configurado. Funciones de auth devolverán null.");
+const AUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "polla-mundialista-secret-key-2026";
+if (!process.env.AUTH_SECRET && !process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "development") {
+  console.warn("AUTH_SECRET no configurado. Usando default. Define AUTH_SECRET o NEXTAUTH_SECRET en producción.");
 }
 
 export async function getAdminFromReq(req: Request): Promise<string | null> {

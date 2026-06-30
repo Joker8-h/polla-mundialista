@@ -11,7 +11,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { type, matchId } = await req.json();
+  let body;
+  try { body = await req.json(); }
+  catch { return NextResponse.json({ error: "JSON inválido" }, { status: 400 }); }
+  const { type, matchId } = body;
 
   const amounts: Record<string, number> = { daily: 2000, weekly: 14000, extra_prediction: 2000 };
   const amount = amounts[type] || 2000;
@@ -48,7 +51,9 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
-    // Wompi returns the link ID in data.data.id
+    if (!data?.data?.id) {
+      return NextResponse.json({ error: "Respuesta inválida de Wompi" }, { status: 502 });
+    }
     const checkoutUrl = `https://checkout.wompi.co/l/${data.data.id}`;
     return NextResponse.json({ url: checkoutUrl });
   } catch (err) {

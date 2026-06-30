@@ -17,12 +17,16 @@ export default function RankingPage() {
   const [loading, setLoading] = useState(true);
 
   async function fetchRankings() {
-    const weekRes = await fetch("/api/weeks/current");
-    const weekData = await weekRes.json();
-    if (weekData.weekId) {
-      const res = await fetch(`/api/ranking/week/${weekData.weekId}`);
-      const data = await res.json();
-      setRankings(data.rankings || []);
+    try {
+      const weekRes = await fetch("/api/weeks/current");
+      const weekData = await weekRes.json();
+      if (weekData.weekId) {
+        const res = await fetch(`/api/ranking/week/${weekData.weekId}`);
+        const data = await res.json();
+        setRankings(data.rankings || []);
+      }
+    } catch {
+      setRankings([]);
     }
     setLoading(false);
   }

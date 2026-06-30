@@ -27,7 +27,6 @@ export async function GET(
 
     const match = await prisma.match.findUnique({
       where: { id },
-      include: { week: true },
     });
     if (!match) {
       return NextResponse.json({ error: "Partido no encontrado" }, { status: 404 });
@@ -74,9 +73,9 @@ export async function GET(
             (match.substitutions ?? 0) > 0;
 
           if (dbHasData) {
-            // DB stats are totals — split them evenly by default, or use a ratio based on scores
-            const homeRatio = (match.homeScore ?? 0) >= (match.awayScore ?? 0) ? 0.55 : 0.45;
-            const awayRatio = 1 - homeRatio;
+            // DB stats are totals — split evenly
+            const homeRatio = 0.5;
+            const awayRatio = 0.5;
             const split = (val: number | null, ratio: number) => Math.round((val ?? 0) * ratio);
             const totalSubs = match.substitutions ?? 0;
             liveStats = {
@@ -220,7 +219,7 @@ export async function GET(
               data: data.results.map((p: any) => ({
                 id: p.id,
                 name: p.name,
-                shortName: p.short_name,
+                shortName: p.short_name || p.name,
                 teamId: teamId,
                 position: p.position,
               })),
@@ -239,7 +238,6 @@ export async function GET(
       getPlayers(match.homeTeamId),
       getPlayers(match.awayTeamId),
     ]);
-    const matchPlayers = [...homePlayers, ...awayPlayers].map(p => p.name).sort();
 
     return NextResponse.json({
       match: {

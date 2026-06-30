@@ -57,7 +57,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
 });
 
-const AUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
+const AUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+if (!AUTH_SECRET) {
+  throw new Error("AUTH_SECRET no configurado. Define AUTH_SECRET o NEXTAUTH_SECRET en el entorno.");
+}
+
+export async function getAdminFromReq(req: Request): Promise<string | null> {
+  const userId = await getUserIdFromReq(req);
+  if (!userId) return null;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isAdmin: true },
+    });
+    return user?.isAdmin ? userId : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function getUserIdFromReq(req: Request): Promise<string | null> {
   const cookieHeader = req.headers.get("cookie") || "";
@@ -70,15 +87,19 @@ export async function getUserIdFromReq(req: Request): Promise<string | null> {
 
   const foundCookie = cookieNames.find((name) => cookieHeader.includes(name + "="));
 
-  console.log("[auth] debug:", {
-    hasCookie: !!cookieHeader,
-    isSecure,
-    foundCookie: foundCookie || "none",
-    cookieKeys: cookieHeader.split(";").map((c) => c.trim().split("=")[0]),
-  });
+  if (process.env.NODE_ENV === "development") {
+    console.log("[auth] debug:", {
+      hasCookie: !!cookieHeader,
+      isSecure,
+      foundCookie: foundCookie || "none",
+      cookieKeys: cookieHeader.split(";").map((c) => c.trim().split("=")[0]),
+    });
+  }
 
   if (!foundCookie) {
-    console.log("[auth] no session cookie found, trying auth() fallback");
+    if (process.env.NODE_ENV === "development") {
+      console.log("[auth] no session cookie found, trying auth() fallback");
+    }
     try {
       const session = await auth();
       if (session?.user?.id) {

@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAdminFromReq } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const adminId = await getAdminFromReq(req);
+  if (!adminId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
   const winners = await prisma.weeklyWinner.findMany({
     include: { user: true, week: true },
     orderBy: [{ week: { number: "desc" } }, { rank: "asc" }],

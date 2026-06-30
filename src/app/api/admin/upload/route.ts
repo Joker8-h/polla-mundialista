@@ -1,11 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { getAdminFromReq } from "@/lib/auth";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
 const MAX_SIZE = 5 * 1024 * 1024;
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const adminId = await getAdminFromReq(req);
+    if (!adminId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     const formData = await req.formData();
     const file = formData.get("image") as File;
 

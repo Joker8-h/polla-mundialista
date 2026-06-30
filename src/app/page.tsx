@@ -239,7 +239,7 @@ export default function LandingPage() {
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-wider mb-1 block" style={{color:'rgba(255,255,255,0.4)'}}>WhatsApp</label>
-                <input className="w-full px-4 py-3 rounded-xl text-white text-sm outline-none transition-all focus:shadow-[0_0_15px_rgba(233,30,99,0.3)]" style={{background:'rgba(255,0,255,0.05)', border:'1px solid rgba(255,0,255,0.15)'}} placeholder="3001234567" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+                <input inputMode="numeric" className="w-full px-4 py-3 rounded-xl text-white text-sm outline-none transition-all focus:shadow-[0_0_15px_rgba(233,30,99,0.3)]" style={{background:'rgba(255,0,255,0.05)', border:'1px solid rgba(255,0,255,0.15)'}} placeholder="3001234567" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-wider mb-1 block" style={{color:'rgba(255,255,255,0.4)'}}>Ciudad</label>
@@ -286,7 +286,7 @@ export default function LandingPage() {
             <div className="space-y-3">
               <div>
                 <label className="text-[10px] uppercase tracking-wider mb-1 block" style={{color:'rgba(255,255,255,0.4)'}}>WhatsApp</label>
-                <input className="w-full px-4 py-3 rounded-xl text-white text-sm outline-none transition-all focus:shadow-[0_0_15px_rgba(233,30,99,0.3)]" style={{background:'rgba(255,0,255,0.05)', border:'1px solid rgba(255,0,255,0.15)'}} placeholder="Tu número de WhatsApp" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+                <input inputMode="numeric" className="w-full px-4 py-3 rounded-xl text-white text-sm outline-none transition-all focus:shadow-[0_0_15px_rgba(233,30,99,0.3)]" style={{background:'rgba(255,0,255,0.05)', border:'1px solid rgba(255,0,255,0.15)'}} placeholder="Tu número de WhatsApp" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-wider mb-1 block" style={{color:'rgba(255,255,255,0.4)'}}>Contraseña</label>

@@ -53,17 +53,18 @@ export async function register() {
 
     /** Obtiene fecha en zona Colombia (UTC-5) */
     function nowColombia(): Date {
-      const str = new Intl.DateTimeFormat("en-CA", {
+      const now = new Date();
+      const dateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(now);
+      const parts = new Intl.DateTimeFormat("en-CA", {
         timeZone: "America/Bogota",
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
         hour12: false,
-      }).formatToParts(new Date());
-      const dateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
-      const h = str.find(p => p.type === "hour")?.value || "00";
-      const m = str.find(p => p.type === "minute")?.value || "00";
-      const s = str.find(p => p.type === "second")?.value || "00";
+      }).formatToParts(now);
+      const h = parts.find(p => p.type === "hour")?.value || "00";
+      const m = parts.find(p => p.type === "minute")?.value || "00";
+      const s = parts.find(p => p.type === "second")?.value || "00";
       return new Date(`${dateStr}T${h}:${m}:${s}-05:00`);
     }
 
@@ -77,16 +78,26 @@ export async function register() {
         const weekStart = new Date(Date.UTC(y, m - 1, d - colDayOfWeek, 5, 0, 0, 0));
         const weekEnd = new Date(Date.UTC(y, m - 1, d - colDayOfWeek + 6, 4, 59, 59, 0));
         const lastWeek = await prisma.week.findFirst({ orderBy: { number: "desc" } });
-        week = await prisma.week.create({
-          data: {
-            number: (lastWeek?.number || 0) + 1,
-            startDate: weekStart,
-            endDate: weekEnd,
-          },
-        });
-        console.log(`[Sync] Semana ${week.number} creada`);
+        try {
+          week = await prisma.week.create({
+            data: {
+              number: (lastWeek?.number || 0) + 1,
+              startDate: weekStart,
+              endDate: weekEnd,
+            },
+          });
+        } catch {
+          week = await prisma.week.findFirst({ where: { isActive: true, isClosed: false } });
+        }
+        if (week) console.log(`[Sync] Semana ${week.number} creada`);
       }
       return week;
+    }
+
+    async function ensureWeek() {
+      const w = await getOrCreateWeek();
+      if (!w) throw new Error("No se pudo crear/encontrar semana activa");
+      return w;
     }
 
     // ─── Scoring ────────────────────────────────────────────────────────────────
@@ -98,17 +109,17 @@ export async function register() {
           prisma.match.findUnique({ where: { id: matchId } }),
         ]);
         if (!match) return;
-        const scorers = getGoalScorers(incidents).map((s) => s.player);
+        const allScorers = getGoalScorers(incidents);
+        const scorersNames = allScorers.map((s) => s.player);
         const predictions = await prisma.prediction.findMany({ where: { matchId } });
         const playerPredictions = await prisma.playerGoalPrediction.findMany({ where: { matchId } });
 
         for (const p of predictions) {
-          const pts = calculatePoints(p, match, scorers);
+          const pts = calculatePoints(p, match, scorersNames);
           await prisma.prediction.update({ where: { id: p.id }, data: { ...pts } });
         }
         for (const pgp of playerPredictions) {
-          const actualGoals =
-            getGoalScorers(incidents).find((s) => s.playerId === pgp.playerId)?.count || 0;
+          const actualGoals = allScorers.find((s) => s.playerId === pgp.playerId)?.count || 0;
           const pts = calculatePlayerGoalPoints(pgp.goals, actualGoals);
           await prisma.playerGoalPrediction.update({ where: { id: pgp.id }, data: { points: pts } });
         }
@@ -126,14 +137,13 @@ export async function register() {
           let totalPoints = 0;
           let homeScorePts = 0;
           let winnerPts = 0;
-          if (p.homeScore === match.homeScore) { homeScorePts = 3; totalPoints += 3; }
-          if (p.awayScore === match.awayScore) { totalPoints += 3; }
+          if (p.homeScore === match.homeScore && p.awayScore === match.awayScore) { homeScorePts = 10; totalPoints += 10; }
           const predictedWinner =
             p.homeScore > p.awayScore ? "home" : p.homeScore < p.awayScore ? "away" : "draw";
           const h = match.homeScore ?? 0;
           const a = match.awayScore ?? 0;
           const actualWinner = h > a ? "home" : h < a ? "away" : "draw";
-          if (predictedWinner === actualWinner) { winnerPts = 3; totalPoints += 3; }
+          if (predictedWinner === actualWinner) { winnerPts = 5; totalPoints += 5; }
           await prisma.prediction.update({
             where: { id: p.id },
             data: { homeScorePts, winnerPts, totalPoints },
@@ -148,7 +158,7 @@ export async function register() {
 
     async function syncAll() {
       try {
-        const week = await getOrCreateWeek();
+        const week = await ensureWeek();
 
         // Sync partidos de los próximos 3 días + hoy + ayer (para no perder finalizados)
         const now = nowColombia();

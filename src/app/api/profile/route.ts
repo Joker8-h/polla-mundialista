@@ -8,7 +8,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ user: null });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, whatsapp: true, city: true, createdAt: true },
+  });
   const predictions = await prisma.prediction.findMany({
     where: { userId },
     include: { match: true },

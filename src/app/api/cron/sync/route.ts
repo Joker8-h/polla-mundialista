@@ -1,22 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchMatchesByDate, fetchPlayerStats, fetchIncidents, getTeamAggregateStats, getTotalSubstitutions, getGoalScorers, parseEventDate } from "@/lib/bzzoiro";
 import { calculatePoints, calculatePlayerGoalPoints } from "@/lib/scoring";
+import { todayColombia } from "@/lib/colombia-time";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function syncMatches() {
-  const now = new Date();
+  const todayStr = todayColombia();
+  const [y, m, d] = todayStr.split("-").map(Number);
+  const colDayOfWeek = new Date(`${todayStr}T12:00:00-05:00`).getUTCDay();
+  const now = new Date(`${todayStr}T${new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date())}-05:00`);
 
   let week = await prisma.week.findFirst({ where: { isActive: true, isClosed: false } });
   if (!week) {
-    const weekStart = new Date(now);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    weekStart.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    weekEnd.setHours(23, 59, 59, 0);
+    const weekStart = new Date(Date.UTC(y, m - 1, d - colDayOfWeek, 5, 0, 0, 0));
+    const weekEnd = new Date(Date.UTC(y, m - 1, d - colDayOfWeek + 6, 4, 59, 59, 0));
     const lastWeek = await prisma.week.findFirst({ orderBy: { number: "desc" } });
     week = await prisma.week.create({
       data: { number: (lastWeek?.number || 0) + 1, startDate: weekStart, endDate: weekEnd },
@@ -34,7 +34,12 @@ async function syncMatches() {
       const events = await fetchMatchesByDate(dateStr);
       for (const event of events) {
         const existing = await prisma.match.findUnique({ where: { apiMatchId: event.id } });
-        if (!existing) {
+          if (!existing) {
+          // Map status
+          let status = "scheduled";
+          if (event.status === "finished" || event.status === "ended") status = "finished";
+          else if (["live","inprogress","halftime","HT","1H","2H","1st_half","2nd_half","extra_time","penalty"].includes(event.status)) status = "live";
+
           await prisma.match.create({
             data: {
               weekId: week.id,
@@ -44,15 +49,17 @@ async function syncMatches() {
               homeTeamId: event.home_team_id,
               awayTeamId: event.away_team_id,
               matchDate: parseEventDate(event.event_date),
-              status: event.status,
+              status,
               groupName: event.group_name,
               roundNumber: event.round_number,
+              homeScore: status !== "scheduled" ? (event.home_score ?? null) : null,
+              awayScore: status !== "scheduled" ? (event.away_score ?? null) : null,
             },
           });
           synced.push(`${event.home_team} vs ${event.away_team}`);
         } else {
           // Always update live status, date, and basic scores so dashboard is real-time
-          const isFinishing = event.status === "finished" && existing.status !== "finished";
+          const isFinishing = (event.status === "finished" || event.status === "ended") && existing.status !== "finished";
           
           if (isFinishing) {
             const [stats, incidents] = await Promise.all([
@@ -99,6 +106,16 @@ async function syncMatches() {
       // skip errores
     }
   }
+
+  // Close week if past end date
+  if (!week.isClosed && now >= week.endDate) {
+    await prisma.week.update({
+      where: { id: week.id },
+      data: { isClosed: true },
+    });
+    synced.push(`Semana ${week.number} cerrada`);
+  }
+
   return synced;
 }
 
@@ -132,7 +149,12 @@ async function calculateAllPoints() {
   return calculated;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const synced = await syncMatches();
     const calculated = await calculateAllPoints();

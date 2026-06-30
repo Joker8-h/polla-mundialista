@@ -632,7 +632,7 @@ function EventTimeline({ incidents, homeTeam, awayTeam }: { incidents: Incident[
               <span className="w-8 text-[10px] font-bold text-center mt-0.5">{ev.minute}&apos;</span>
               <span className="text-lg">{getEventIcon(ev.type)}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-white truncate">{ev.player}</p>
+                <p className="text-xs font-semibold text-white truncate">{ev.player || "Jugador"}</p>
                 <p className="text-[10px]" style={{color:'rgba(255,105,180,0.4)'}}>
                   {ev.type === "goal" ? "Gol" : ev.type === "yellow_card" ? "Tarjeta amarilla" : ev.type === "red_card" ? "Tarjeta roja" : "Sustitución"}
                   {ev.is_home !== undefined && ` — ${ev.is_home ? homeTeam : awayTeam}`}
@@ -742,12 +742,17 @@ function PredictionForm({ matchId, homeTeam, awayTeam, players, onSuccess }: { m
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
   const update = (field: keyof FormState, value: string) => setForm((f) => ({ ...f, [field]: value }));
   const handleSubmit = async () => {
     setSaving(true);
-    const res = await fetch("/api/predictions", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ matchId, ...form }) });
+    setError("");
+    try {
+      const res = await fetch("/api/predictions", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ matchId, ...form }) });
+      if (res.ok) { setSaved(true); setTimeout(() => { setSaved(false); onSuccess(); }, 1500); }
+      else { const err = await res.json(); setError(err.error || "Error al guardar"); }
+    } catch { setError("Error de red"); }
     setSaving(false);
-    if (res.ok) { setSaved(true); setTimeout(() => { setSaved(false); onSuccess(); }, 1500); }
   };
   const fields: { key: keyof FormState; label: string }[] = [
     { key: "totalShots", label: "Tiros totales" },
@@ -790,6 +795,7 @@ function PredictionForm({ matchId, homeTeam, awayTeam, players, onSuccess }: { m
           </div>
         ))}
       </div>
+      {error && <div className="rounded-xl p-3 text-center text-sm font-medium" style={{background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#fca5a5'}}>{error}</div>}
       <button onClick={handleSubmit} disabled={saving || saved}
         className="w-full py-3 font-bold rounded-xl text-sm transition-all active:scale-[0.98]"
         style={saved ? {background:'rgba(34,197,94,0.2)', color:'#4ade80', border:'1px solid rgba(34,197,94,0.2)'} : {}}>

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAdminFromReq } from "@/lib/auth";
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const adminId = await getAdminFromReq(req);
+    if (!adminId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
     const { id } = await params;
     const body = await req.json();
 
@@ -48,9 +52,13 @@ export async function PUT(
     if (updated.status === "finished") {
       try {
         const { calculatePoints } = await import("@/lib/scoring");
+        const { fetchIncidents, getGoalScorers } = await import("@/lib/bzzoiro");
         const predictions = await prisma.prediction.findMany({
           where: { matchId: id, type: "base" },
         });
+
+        const incidents = await fetchIncidents(updated.apiMatchId).catch(() => []);
+        const actualScorers = getGoalScorers(incidents).map((s: { player: string }) => s.player);
 
         await Promise.all(
           predictions.map(async (pred) => {
@@ -83,11 +91,25 @@ export async function PUT(
                 accuratePass: updated.accuratePass,
                 totalCross: updated.totalCross,
               },
-              [] // goalscorers — can be added later from incidents
+              actualScorers
             );
             await prisma.prediction.update({
               where: { id: pred.id },
-              data: { totalPoints: pts.totalPoints },
+              data: {
+                totalPoints: pts.totalPoints,
+                homeScorePts: pts.homeScorePts,
+                winnerPts: pts.winnerPts,
+                goalscorerPts: pts.goalscorerPts,
+                totalShotsPts: pts.totalShotsPts,
+                shotsOnGoalPts: pts.shotsOnGoalPts,
+                savesPts: pts.savesPts,
+                foulsPts: pts.foulsPts,
+                yellowCardsPts: pts.yellowCardsPts,
+                redCardsPts: pts.redCardsPts,
+                substitutionsPts: pts.substitutionsPts,
+                accuratePassPts: pts.accuratePassPts,
+                totalCrossPts: pts.totalCrossPts,
+              },
             });
           })
         );

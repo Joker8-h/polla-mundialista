@@ -90,7 +90,7 @@ function DashboardContent() {
     return () => clearInterval(interval);
   }, []);
 
-  useMemo(() => {
+  useEffect(() => {
     if (matches.length > 0 && !selectedDay) {
       const todayCol = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
       setSelectedDay(todayCol);

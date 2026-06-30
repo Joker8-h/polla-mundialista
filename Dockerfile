@@ -2,7 +2,7 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY prisma ./prisma
 
 RUN npm install
@@ -13,4 +13,4 @@ RUN npx prisma generate && npm run build
 
 EXPOSE 3000
 
-CMD npx prisma db push && npm run start
+CMD npx prisma db push --skip-generate && npm run start

@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
 
   const [y, m, d] = todayColombia().split("-").map(Number);
   const startDate = new Date(Date.UTC(y, m - 1, d - 2, 5, 0, 0, 0));
-  const endDate = new Date(Date.UTC(y, m - 1, d + 11, 4, 59, 59, 999));
+  const endDate = new Date(Date.UTC(y, m - 1, d + 7, 4, 59, 59, 999));
 
   const allMatches = await prisma.match.findMany({
     where: {

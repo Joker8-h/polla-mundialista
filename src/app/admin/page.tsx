@@ -85,13 +85,17 @@ function AdminSelect({ value, options, onChange }: { value: string; options: { l
 export default function AdminPage() {
   const [tab, setTab] = useState<AdminTab>("ganadores");
   const [password, setPassword] = useState("");
-  const [authed, setAuthed] = useState(false);
+  const [authed, setAuthed] = useState(() => typeof window !== "undefined" && localStorage.getItem("admin-auth") === "true");
   const [authError, setAuthError] = useState(false);
 
   const handleLogin = async () => {
     try {
-      const res = await fetch("/api/admin/users");
-      if (res.ok) { setAuthed(true); setAuthError(false); }
+      const res = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) { setAuthed(true); localStorage.setItem("admin-auth", "true"); setAuthError(false); }
       else { setAuthError(true); }
     } catch {
       setAuthError(true);

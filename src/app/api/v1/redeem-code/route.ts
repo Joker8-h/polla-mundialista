@@ -1,9 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW = 60_000;
+const RATE_LIMIT_MAX = 10;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = rateLimitMap.get(ip) || [];
+  const recent = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW);
+  if (recent.length >= RATE_LIMIT_MAX) return false;
+  recent.push(now);
+  rateLimitMap.set(ip, recent);
+  return true;
+}
+
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ success: false, error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." }, { status: 429 });
+  }
+
   const apiKey = req.headers.get("x-api-key");
-  const { code } = await req.json();
+  let body;
+  try { body = await req.json(); }
+  catch { return NextResponse.json({ success: false, error: "JSON inválido" }, { status: 400 }); }
+  const { code } = body;
 
   if (!apiKey || !code) {
     return NextResponse.json({ success: false, error: "API key y code requeridos" }, { status: 400 });

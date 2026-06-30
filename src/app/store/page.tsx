@@ -35,7 +35,15 @@ export default function StoreRedeemPage() {
             onChange={(e) => setPassword(e.target.value)} 
           />
           <button 
-            onClick={() => setAuthed(password === "tienda2026")} 
+            onClick={async () => {
+              const res = await fetch("/api/admin/store-auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password }),
+              });
+              if (res.ok) setAuthed(true);
+              else setError("Contraseña incorrecta");
+            }} 
             className="w-full py-3 rounded-xl font-bold text-white bg-pink-600 hover:bg-pink-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           >
             Ingresar
@@ -51,9 +59,7 @@ export default function StoreRedeemPage() {
     setResult(null); 
     
     try {
-      const res = await fetch(`/api/v1/validate-code?code=${code}`, { 
-        headers: { "x-api-key": "admin-validation" } 
-      }); 
+      const res = await fetch(`/api/store/validate?code=${code}`); 
       
       if (res.ok) { 
         setResult(await res.json()); 

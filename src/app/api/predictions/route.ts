@@ -9,7 +9,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const body = await req.json();
+  let body;
+  try { body = await req.json(); }
+  catch { return NextResponse.json({ error: "JSON inválido" }, { status: 400 }); }
   const { matchId } = body;
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });

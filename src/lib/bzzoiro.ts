@@ -88,6 +88,7 @@ async function safeFetch(url: string, fallback: unknown = []) {
 let seasonCache: BzzoiroEvent[] = [];
 let seasonCacheTs = 0;
 const SEASON_CACHE_TTL = 60_000;
+// Note: cache is per-serverless-instance. Helps during warm starts.
 
 export async function fetchAllSeasonMatches(): Promise<BzzoiroEvent[]> {
   const now = Date.now();
@@ -195,7 +196,7 @@ export async function syncLiveMatchesIfNecessary() {
     for (const event of relevant) {
       let status = "scheduled";
       if (event.status === "finished" || event.status === "ended") status = "finished";
-      else if (["live", "inprogress", "halftime", "HT", "1H", "2H", "1st_half", "2nd_half", "extra_time", "penalty"].includes(event.status)) status = "live";
+      else if (["live", "halftime", "HT", "1H", "2H", "1st_half", "2nd_half", "extra_time", "penalty"].includes(event.status)) status = "live";
 
       const updateData: Record<string, unknown> = {
         status,

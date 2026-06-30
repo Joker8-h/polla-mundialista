@@ -11,29 +11,72 @@ interface RankingEntry {
   points: number;
 }
 
+interface WeekInfo {
+  id: string;
+  number: number;
+  startDate: string;
+  endDate: string;
+  isClosed: boolean;
+}
+
 export default function RankingPage() {
   const router = useRouter();
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weeks, setWeeks] = useState<WeekInfo[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
+  const [currentWeekId, setCurrentWeekId] = useState<string | null>(null);
 
-  async function fetchRankings() {
+  async function fetchWeeks() {
     try {
-      const weekRes = await fetch("/api/weeks/current");
-      const weekData = await weekRes.json();
-      if (weekData.weekId) {
-        const res = await fetch(`/api/ranking/week/${weekData.weekId}`);
-        const data = await res.json();
-        setRankings(data.rankings || []);
+      const [currentRes, historyRes] = await Promise.all([
+        fetch("/api/weeks/current"),
+        fetch("/api/weeks/history"),
+      ]);
+      const currentData = await currentRes.json();
+      const historyData = await historyRes.json();
+      const allWeeks = (historyData.weeks || []) as WeekInfo[];
+      if (currentData.week) {
+        const alreadyIn = allWeeks.some((w: WeekInfo) => w.id === currentData.week.id);
+        if (!alreadyIn) allWeeks.unshift(currentData.week);
+        if (!selectedWeek) {
+          setSelectedWeek(currentData.week.id);
+          setCurrentWeekId(currentData.week.id);
+        }
       }
+      setWeeks(allWeeks);
+    } catch {}
+  }
+
+  async function fetchRankings(weekId: string) {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/ranking/week/${weekId}`);
+      const data = await res.json();
+      setRankings(data.rankings || []);
     } catch {
       setRankings([]);
     }
     setLoading(false);
   }
 
-  useEffect(() => { void fetchRankings(); }, []);
+  useEffect(() => {
+    fetchWeeks();
+  }, []);
+
+  useEffect(() => {
+    if (selectedWeek) fetchRankings(selectedWeek);
+  }, [selectedWeek]);
 
   const topThree = rankings.slice(0, 3);
+  const currentWeek = weeks.find((w) => w.id === selectedWeek);
+  const isLiveWeek = selectedWeek === currentWeekId;
+
+  function weekLabel(w: WeekInfo) {
+    const start = new Date(w.startDate).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+    const end = new Date(w.endDate).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+    return `Semana ${w.number} (${start} - ${end})`;
+  }
 
   return (
     <div className="min-h-screen lg:flex bg-ranking">
@@ -43,20 +86,39 @@ export default function RankingPage() {
           <header className="mb-5 flex min-h-14 items-center justify-between gap-4 pb-4" style={{borderBottom:'1px solid rgba(255,0,255,0.1)'}}>
             <div>
               <p className="text-xs uppercase lg:hidden" style={{color:'rgba(255,105,180,0.5)'}}>Fantasy Mundial</p>
-              <h1 className="text-lg font-bold text-white">Clasificación general</h1>
-              <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>Tabla semanal en vivo</p>
+              <h1 className="text-lg font-bold text-white">Clasificación</h1>
+              <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>{isLiveWeek ? "Semana actual en vivo" : `Semana cerrada`}</p>
             </div>
             <button onClick={() => router.push("/dashboard")} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
               Partidos
             </button>
           </header>
 
+          <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+            {weeks.map((w) => {
+              const isActive = w.id === selectedWeek;
+              const isCurrent = w.id === currentWeekId;
+              return (
+                <button
+                  key={w.id}
+                  onClick={() => setSelectedWeek(w.id)}
+                  className="shrink-0 rounded-xl px-4 py-2 text-xs font-bold whitespace-nowrap transition-all"
+                  style={isActive
+                    ? { background: 'linear-gradient(135deg,#ff1493,#c500ff)', color: '#fff', boxShadow: '0 4px 12px rgba(255,20,147,0.4)' }
+                    : { background: 'rgba(255,0,255,0.05)', border: '1px solid rgba(255,0,255,0.15)', color: isCurrent ? '#ff69b4' : 'rgba(255,105,180,0.5)' }}
+                >
+                  {isCurrent ? "🔴 " : ""}Semana {w.number}
+                </button>
+              );
+            })}
+          </div>
+
           {loading ? (
             <div className="rounded-2xl p-10 text-center text-sm" style={{background:'rgba(18,0,13,0.7)', border:'1px solid rgba(255,0,255,0.1)', color:'rgba(255,105,180,0.5)'}}>Cargando tabla...</div>
           ) : (
             <div className="grid gap-5 xl:grid-cols-[390px_minmax(0,1fr)]">
               <section className="rounded-2xl p-5" style={{background:'rgba(18,0,13,0.7)', border:'1px solid rgba(255,0,255,0.12)'}}>
-                <h2 className="mb-5 text-base font-bold text-white">Podio semanal</h2>
+                <h2 className="mb-5 text-base font-bold text-white">Podio {currentWeek ? `Semana ${currentWeek.number}` : ""}</h2>
                 {topThree.length > 0 ? (
                   <div className="space-y-3">
                     {topThree.map((entry, index) => (
@@ -109,6 +171,7 @@ function Sidebar({ active }: { active: string }) {
     { label: "Inicio", path: "/dashboard", icon: "🏠" },
     { label: "Partidos", path: "/dashboard", icon: "⚽" },
     { label: "Clasificación", path: "/ranking", icon: "🏆" },
+    { label: "Mis Premios", path: "/mis-premios", icon: "🎁" },
     { label: "Perfil", path: "/perfil", icon: "👤" },
   ];
   return (

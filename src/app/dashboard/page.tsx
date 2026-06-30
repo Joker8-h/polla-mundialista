@@ -28,6 +28,13 @@ interface RankingEntry {
   points: number;
 }
 
+interface WeekInfo {
+  id: string;
+  number: number;
+  startDate: string;
+  endDate: string;
+}
+
 export default function DashboardPage() {
   return (
     <Suspense fallback={<LoadingScreen label="Cargando partidos..." />}>
@@ -47,6 +54,16 @@ function LoadingScreen({ label }: { label: string }) {
   );
 }
 
+function getWeekDays(startDate: string, endDate: string): string[] {
+  const days: string[] = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    days.push(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(d));
+  }
+  return days;
+}
+
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,35 +75,31 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [paidMsg, setPaidMsg] = useState(paidParam);
-  
-  async function fetchMatches() {
-    try {
-      const res = await fetch("/api/matches/today");
-      const data = await res.json();
-      setMatches(data.matches || []);
-      setPaidDays(data.paidDays || []);
-    } catch { }
-    setLoading(false);
-  }
+  const [week, setWeek] = useState<WeekInfo | null>(null);
 
-  async function fetchRankings() {
+  async function fetchData() {
     try {
       const weekRes = await fetch("/api/weeks/current");
       const weekData = await weekRes.json();
-      if (!weekData.weekId) return;
-      const res = await fetch(`/api/ranking/week/${weekData.weekId}`);
-      const data = await res.json();
-      setRankings(data.rankings || []);
-    } catch { }
+      if (!weekData.week?.id) { setLoading(false); return; }
+      const w = weekData.week as WeekInfo;
+      setWeek(w);
+
+      const [matchRes, rankRes] = await Promise.all([
+        fetch(`/api/matches/week/${w.id}`),
+        fetch(`/api/ranking/week/${w.id}`)
+      ]);
+      const matchData = await matchRes.json();
+      const rankData = await rankRes.json();
+      setMatches(matchData.matches || []);
+      setRankings(rankData.rankings || []);
+    } catch {}
+    setLoading(false);
   }
 
   useEffect(() => {
-    fetchMatches();
-    fetchRankings();
-    const interval = setInterval(() => {
-      fetchMatches();
-      fetchRankings();
-    }, 15000);
+    fetchData();
+    const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -113,8 +126,9 @@ function DashboardContent() {
     return groups;
   }, [matches]);
 
-  const dayKeys = Object.keys(groupedMatches).sort();
-  const activeDayKey = selectedDay ?? dayKeys[0] ?? null;
+  const weekDays = week ? getWeekDays(week.startDate, week.endDate) : [];
+  const dayKeys = weekDays.filter(d => groupedMatches[d]);
+  const activeDayKey = selectedDay && dayKeys.includes(selectedDay) ? selectedDay : (dayKeys[0] ?? null);
   const visibleMatches = activeDayKey ? (groupedMatches[activeDayKey] ?? []) : [];
   const isDayPaid = activeDayKey ? paidDays.includes(activeDayKey) : false;
 
@@ -144,7 +158,7 @@ function DashboardContent() {
     <AppShell active="Partidos">
       <main className="min-w-0 flex-1">
         <div className="mx-auto max-w-[1500px] px-4 py-5 lg:px-6">
-          <HeaderBar title="Fantasy Mundial" subtitle="Predice y gana premios semanales" />
+          <HeaderBar title="Fantasy Mundial" subtitle={`Semana ${week?.number || "-"} en vivo`} />
 
           {paidMsg && (
             <div className="mb-4 rounded-xl px-4 py-3 text-sm" style={{background:'rgba(255,20,147,0.15)', border:'1px solid rgba(255,20,147,0.3)', color:'#ff69b4'}}>
@@ -175,12 +189,19 @@ function DashboardContent() {
             </div>
           )}
 
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          {!week && (
+            <div className="rounded-2xl p-10 text-center" style={{background:'rgba(18,0,13,0.7)', border:'1px solid rgba(255,0,255,0.1)'}}>
+              <p className="text-lg font-bold text-white">No hay semana activa</p>
+              <p className="mt-2 text-sm" style={{color:'rgba(255,105,180,0.4)'}}>La semana se creará automáticamente cuando comience el Mundial.</p>
+            </div>
+          )}
+
+          {week && <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
             <section className="min-w-0 space-y-5">
               {featuredMatch ? (
                 <FeaturedMatch match={featuredMatch} onOpen={() => router.push(`/match/${featuredMatch.id}`)} />
               ) : (
-                <EmptyPanel title="No hay partidos programados" text="Los partidos se sincronizan automáticamente." />
+                <EmptyPanel title="No hay partidos hoy" text="Los partidos se sincronizan automáticamente." />
               )}
 
               {!isDayPaid && visibleMatches.length > 0 && (
@@ -214,8 +235,8 @@ function DashboardContent() {
               <section className="rounded-2xl p-4" style={{background:'rgba(18,0,13,0.7)', border:'1px solid rgba(255,0,255,0.1)'}}>
                 <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <h2 className="text-base font-bold text-white">Calendario</h2>
-                    <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>Selecciona un partido para ver datos y predecir.</p>
+                    <h2 className="text-base font-bold text-white">Calendario Semana {week.number}</h2>
+                    <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>{weekDays[0] ? new Date(weekDays[0]+"T12:00:00-05:00").toLocaleDateString("es-CO",{day:"numeric",month:"short"}) : ""} - {weekDays[weekDays.length-1] ? new Date(weekDays[weekDays.length-1]+"T12:00:00-05:00").toLocaleDateString("es-CO",{day:"numeric",month:"short"}) : ""}</p>
                   </div>
                   <span className="rounded-lg px-2.5 py-1 text-xs font-bold" style={{background:'rgba(255,0,255,0.05)', color: isDayPaid ? '#ff69b4' : 'rgba(255,105,180,0.5)'}}>
                     {isDayPaid ? "✓ Activo" : "🔒 Bloqueado"}
@@ -230,11 +251,11 @@ function DashboardContent() {
             </section>
 
             <aside className="space-y-5">
-              <RankingPanel rankings={rankings} onOpen={() => router.push("/ranking")} />
-              <UpcomingPanel matches={matches.slice(1, 5)} onOpen={(id) => router.push(`/match/${id}`)} />
+              <RankingPanel rankings={rankings} weekNumber={week.number} onOpen={() => router.push("/ranking")} />
+              <UpcomingPanel matches={matches.slice(0, 5)} onOpen={(id) => router.push(`/match/${id}`)} />
               <InfoPanel />
             </aside>
-          </div>
+          </div>}
         </div>
       </main>
     </AppShell>
@@ -247,13 +268,12 @@ function AppShell({ active, children }: { active: string; children: React.ReactN
     { label: "Inicio", path: "/dashboard", icon: "🏠" },
     { label: "Partidos", path: "/dashboard", icon: "⚽" },
     { label: "Clasificación", path: "/ranking", icon: "🏆" },
-    { label: "Premios", path: "/premios", icon: "🎁" },
+    { label: "Mis Premios", path: "/mis-premios", icon: "🎁" },
     { label: "Perfil", path: "/perfil", icon: "👤" },
   ];
 
   return (
     <div className="min-h-screen lg:flex relative bg-dashboard">
-
       <aside className="hidden w-[244px] shrink-0 lg:flex lg:flex-col relative z-10" style={{borderRight:'1px solid rgba(255,0,255,0.1)', background:'rgba(10,0,8,0.9)', backdropFilter:'blur(20px)'}}>
         <div className="flex h-16 items-center gap-3 px-5" style={{borderBottom:'1px solid rgba(255,0,255,0.1)'}}>
           <div className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-black text-white" style={{background:'linear-gradient(135deg, #ff1493, #c500ff)'}}>⚽</div>
@@ -281,7 +301,7 @@ function AppShell({ active, children }: { active: string; children: React.ReactN
             <button onClick={() => router.push("/ranking")} className="flex-1 rounded-lg px-3 py-2 text-xs font-bold text-white hover:opacity-80 transition-opacity" style={{border:'1px solid rgba(255,255,255,0.15)'}}>
               Ranking
             </button>
-            <button onClick={() => router.push("/premios")} className="flex-1 rounded-lg px-3 py-2 text-xs font-bold text-white hover:opacity-80 transition-opacity" style={{border:'1px solid rgba(255,20,147,0.3)', background:'rgba(255,20,147,0.15)'}}>
+            <button onClick={() => router.push("/mis-premios")} className="flex-1 rounded-lg px-3 py-2 text-xs font-bold text-white hover:opacity-80 transition-opacity" style={{border:'1px solid rgba(255,20,147,0.3)', background:'rgba(255,20,147,0.15)'}}>
               Premios
             </button>
           </div>
@@ -302,7 +322,7 @@ function HeaderBar({ title, subtitle }: { title: string; subtitle: string }) {
         <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>{subtitle}</p>
       </div>
       <div className="flex items-center gap-2">
-        <button onClick={() => router.push("/premios")} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
+        <button onClick={() => router.push("/mis-premios")} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
           Premios
         </button>
         <button onClick={() => router.push("/ranking")} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
@@ -435,11 +455,11 @@ function MetricCard({ label, value, accent = "pink" }: { label: string; value: n
   );
 }
 
-function RankingPanel({ rankings, onOpen }: { rankings: RankingEntry[]; onOpen: () => void }) {
+function RankingPanel({ rankings, weekNumber, onOpen }: { rankings: RankingEntry[]; weekNumber: number; onOpen: () => void }) {
   return (
     <section className="rounded-2xl p-4" style={{background:'rgba(18,0,13,0.7)', border:'1px solid rgba(255,0,255,0.1)'}}>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-base font-bold text-white">Clasificación</h2>
+        <h2 className="text-base font-bold text-white">Clasificación Semana {weekNumber}</h2>
         <button onClick={onOpen} className="text-xs font-bold hover:opacity-80" style={{color:'#ff69b4'}}>Ver completa</button>
       </div>
       <div className="space-y-2">

@@ -200,24 +200,28 @@ model WeekPrize {
   imageUrl    String?  // Cloudinary image URL
   createdAt   DateTime @default(now())
 
-  week Week @relation(fields: [weekId], references: [id])
+  week    Week            @relation(fields: [weekId], references: [id])
+  winners WeeklyWinner[]
 
   @@unique([weekId, rank])
 }
 
 model WeeklyWinner {
-  id        String   @id @default(cuid())
-  weekId    String
-  userId    String
-  rank      Int
-  code      String   @unique
-  claimed   Boolean  @default(false)
-  claimedAt DateTime?
+  id          String   @id @default(cuid())
+  weekId      String
+  userId      String
+  rank        Int
+  weekPrizeId String?
+  code        String   @unique
+  claimed     Boolean  @default(false)
+  claimedAt   DateTime?
   invalidatedAt DateTime?
-  createdAt DateTime @default(now())
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
 
-  week Week @relation(fields: [weekId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+  week      Week       @relation(fields: [weekId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+  weekPrize WeekPrize? @relation(fields: [weekPrizeId], references: [id])
 }
 
 model ApiKey {

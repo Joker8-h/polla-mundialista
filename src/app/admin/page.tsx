@@ -165,19 +165,19 @@ function WinnersTab() {
   const [loading, setLoading] = useState(true);
   useEffect(() => { fetch("/api/admin/winners").then(r => r.json()).then(d => { setWinners(d.winners || []); setLoading(false); }).catch(() => setLoading(false)); }, []);
   if (loading) return <Spinner />;
-  if (!winners.length) return <EmptyState icon="🏆" title="No hay ganadores aún" desc="Los ganadores aparecerán aquí cuando se definan las semanas." />;
+  if (!winners.length) return <EmptyState icon="🏆" title="No hay ganadores aún" desc="Los ganadores aparecerán aquí cuando se cierre una semana." />;
   return (
     <div className="space-y-2">
       {winners.map((w) => (
         <div key={w.id} className="admin-row flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black" style={w.rank <= 3 ? { background: "linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,215,0,0.05))", color: "#ffd700" } : { background: "rgba(255,0,255,0.08)", color: "#ff69b4" }}>#{w.rank}</span>
-            <div>
-              <p className="text-sm font-bold text-white">{w.user?.name || "Sin nombre"}</p>
-              <p className="text-xs" style={{ color: "rgba(255,105,180,0.4)" }}>{w.prize?.label || "Premio"}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0" style={w.rank <= 3 ? { background: "linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,215,0,0.05))", color: "#ffd700" } : { background: "rgba(255,0,255,0.08)", color: "#ff69b4" }}>#{w.rank}</span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-white truncate">{w.user?.name || "Sin nombre"}</p>
+              <p className="text-xs" style={{ color: "rgba(255,105,180,0.4)" }}>{w.prize?.label || "Premio"} · Semana {(w as any).week?.number || "-"}</p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <code className="text-xs font-mono" style={{ color: "#4ade80" }}>{w.code}</code>
             <p className="text-[10px] mt-0.5" style={{ color: w.claimed ? "#4ade80" : "rgba(255,105,180,0.4)" }}>{w.claimed ? `Redimido ${w.claimedAt ? new Date(w.claimedAt).toLocaleDateString("es-CO") : ""}` : "Pendiente"}</p>
           </div>
@@ -404,9 +404,9 @@ function CodeValidatorTab() {
               {result.used && <span className="admin-badge" style={{ background: "rgba(255,20,147,0.15)", color: "#ff69b4" }}>Redimido</span>}
             </div>
             <div className="space-y-2">
-              <div className="flex justify-between"><span className="text-xs" style={{ color: "rgba(255,105,180,0.5)" }}>Ganador</span><span className="text-sm font-semibold text-white">{result.winner?.name}</span></div>
+              <div className="flex justify-between items-center"><span className="text-xs" style={{ color: "rgba(255,105,180,0.5)" }}>Jugador</span><span className="text-base font-black text-white">{result.winner?.name || result.winner?.whatsapp}</span></div>
               <div className="flex justify-between"><span className="text-xs" style={{ color: "rgba(255,105,180,0.5)" }}>WhatsApp</span><span className="text-sm text-white">{result.winner?.whatsapp}</span></div>
-              <div className="flex justify-between"><span className="text-xs" style={{ color: "rgba(255,105,180,0.5)" }}>Código</span><code className="text-sm font-mono" style={{ color: "#4ade80" }}>{result.code}</code></div>
+              <div className="flex justify-between"><span className="text-xs" style={{ color: "rgba(255,105,180,0.5)" }}>Código</span><code className="text-lg font-mono tracking-widest" style={{ color: "#4ade80" }}>{result.code}</code></div>
               <div className="flex justify-between"><span className="text-xs" style={{ color: "rgba(255,105,180,0.5)" }}>Premio</span><span className="text-sm text-white">{result.prize?.label}</span></div>
               {result.prize?.value && <div className="flex justify-between"><span className="text-xs" style={{ color: "rgba(255,105,180,0.5)" }}>Valor</span><span className="text-sm text-white">{result.prize.unit === "percent" ? `${result.prize.value}%` : `$${result.prize.value.toLocaleString("es-CO")}`}{result.prize.minPurchase ? ` (mín $${result.prize.minPurchase.toLocaleString("es-CO")})` : ""}</span></div>}
               <div className="flex justify-between"><span className="text-xs" style={{ color: "rgba(255,105,180,0.5)" }}>Vence</span><span className="text-sm text-white">{new Date(result.expiresAt).toLocaleDateString("es-CO")}</span></div>

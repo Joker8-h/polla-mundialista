@@ -22,10 +22,20 @@ interface ProfilePrediction {
 interface ProfileWinning {
   id: string;
   rank: number;
-  prizeLabel?: string;
-  prizeType: string;
   claimed: boolean;
+  claimedAt: string | null;
   code: string;
+  expiresAt: string | null;
+  weekPrize?: {
+    id: string;
+    label: string;
+    type: string;
+    value?: number;
+    unit?: string;
+    minPurchase?: number;
+    imageUrl?: string;
+  } | null;
+  week?: { number: number };
 }
 
 export default function PerfilPage() {
@@ -119,14 +129,15 @@ export default function PerfilPage() {
                     <div key={w.id} className="relative rounded-2xl overflow-hidden" style={w.claimed ? {background:'rgba(34,197,94,0.05)', border:'1px solid rgba(34,197,94,0.2)'} : {background:'rgba(255,20,147,0.1)', border:'1px solid rgba(255,0,255,0.25)'}}>
                       <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-bold text-white">#{w.rank} - {w.prizeLabel || formatPrize(w.prizeType)}</p>
+                          <p className="text-sm font-bold text-white">#{w.rank} - {w.weekPrize?.label || formatPrize(w.weekPrize?.type || "toy")}</p>
                           <code className="mt-1 block text-lg font-black tracking-widest" style={{color: w.claimed ? '#4ade80' : '#ff69b4'}}>{w.code}</code>
+                          <p className="text-xs mt-1" style={{color:'rgba(255,105,180,0.4)'}}>Semana {w.week?.number} · Vence {w.expiresAt ? new Date(w.expiresAt).toLocaleDateString("es-CO") : "-"}</p>
                         </div>
                         <div className="text-right">
                           <span className="block text-xs font-bold mb-2" style={w.claimed ? {color:'#4ade80'} : {color:'#ff69b4'}}>{w.claimed ? "Redimido" : "Pendiente por canjear"}</span>
                           {!w.claimed && (
                             <button onClick={() => setSelectedPrize(w)} className="w-full sm:w-auto px-6 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105" style={{background:'linear-gradient(135deg, #ff1493, #c500ff)', boxShadow:'0 4px 15px rgba(255,20,147,0.4)'}}>
-                              Canjear
+                              Ver Ticket
                             </button>
                           )}
                         </div>
@@ -156,12 +167,14 @@ export default function PerfilPage() {
               <div className="absolute -left-4 top-1/2 w-8 h-8 rounded-full bg-black border-r border-pink-500/30 transform -translate-y-1/2"></div>
               <div className="absolute -right-4 top-1/2 w-8 h-8 rounded-full bg-black border-l border-pink-500/30 transform -translate-y-1/2"></div>
               
-              <h3 className="text-3xl font-black mb-4" style={{color:'#ff69b4'}}>{selectedPrize.prizeLabel || formatPrize(selectedPrize.prizeType)}</h3>
+              <h3 className="text-3xl font-black mb-2" style={{color:'#ff69b4'}}>{selectedPrize.weekPrize?.label || formatPrize(selectedPrize.weekPrize?.type || "toy")}</h3>
+              <p className="text-sm text-white font-bold mb-4">{selectedPrize.weekPrize?.value ? `$${selectedPrize.weekPrize.value.toLocaleString("es-CO")}` : ""}</p>
               <p className="text-xs text-gray-400 uppercase tracking-widest mb-1">Código Único</p>
               <div className="bg-black/50 p-4 rounded-xl border border-pink-500/30">
                 <code className="text-3xl font-mono text-white tracking-widest">{selectedPrize.code}</code>
               </div>
-              <p className="text-xs text-gray-400 mt-4">Solo se puede usar una vez. Al verificarlo, se invalidará automáticamente.</p>
+              <p className="text-xs text-gray-400 mt-2">Jugador: {user?.name}</p>
+              <p className="text-xs text-gray-400">Vence: {selectedPrize.expiresAt ? new Date(selectedPrize.expiresAt).toLocaleDateString("es-CO") : "-"}</p>
             </div>
 
             {/* Footer */}
@@ -187,6 +200,7 @@ function Sidebar({ active }: { active: string }) {
     { label: "Inicio", path: "/dashboard", icon: "🏠" },
     { label: "Partidos", path: "/dashboard", icon: "⚽" },
     { label: "Clasificación", path: "/ranking", icon: "🏆" },
+    { label: "Mis Premios", path: "/mis-premios", icon: "🎁" },
     { label: "Perfil", path: "/perfil", icon: "👤" },
   ];
   return (

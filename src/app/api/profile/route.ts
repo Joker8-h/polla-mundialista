@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   });
   const winnings = await prisma.weeklyWinner.findMany({
     where: { userId },
-    include: { week: true },
+    include: { week: true, weekPrize: true },
     orderBy: { createdAt: "desc" },
   });
 

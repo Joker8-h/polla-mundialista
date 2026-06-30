@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchMatchesByDate, fetchPlayerStats, fetchIncidents, getTeamAggregateStats, getTotalSubstitutions, getGoalScorers, parseEventDate } from "@/lib/bzzoiro";
 import { calculatePoints, calculatePlayerGoalPoints } from "@/lib/scoring";
 import { todayColombia } from "@/lib/colombia-time";
+import { closeWeekAndAssignPrizes } from "@/lib/week-closer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -107,13 +108,10 @@ async function syncMatches() {
     }
   }
 
-  // Close week if past end date
+  // Close week if past end date — assign prizes
   if (!week.isClosed && now >= week.endDate) {
-    await prisma.week.update({
-      where: { id: week.id },
-      data: { isClosed: true },
-    });
-    synced.push(`Semana ${week.number} cerrada`);
+    const result = await closeWeekAndAssignPrizes(week.id);
+    synced.push(result.message);
   }
 
   return synced;

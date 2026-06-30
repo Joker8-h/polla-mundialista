@@ -260,14 +260,9 @@ export async function register() {
 
         // Cerrar semana si ya pasó su fecha de fin
         if (now >= week.endDate && !week.isClosed) {
-          const rankings = await prisma.prediction.groupBy({
-            by: ["userId"],
-            where: { match: { weekId: week.id } },
-            _sum: { totalPoints: true },
-            orderBy: { _sum: { totalPoints: "desc" } },
-          });
-          await prisma.week.update({ where: { id: week.id }, data: { isClosed: true } });
-          console.log(`[Sync] Semana ${week.number} cerrada con ${rankings.length} participantes`);
+          const { closeWeekAndAssignPrizes } = await import("@/lib/week-closer");
+          const result = await closeWeekAndAssignPrizes(week.id);
+          console.log(`[Sync] ${result.message}`);
         }
       } catch (err) {
         console.error("[Sync] Error en sync:", err);

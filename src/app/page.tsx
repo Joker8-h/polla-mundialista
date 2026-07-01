@@ -163,13 +163,12 @@ export default function LandingPage() {
               speed={25}
               className="py-4"
               items={[
-                { value: "+12.543", label: "Participantes activos", icon: "👥" },
-                { value: "+245.678", label: "Predicciones realizadas", icon: "📝" },
-                { value: "+8.765", label: "Premios entregados", icon: "🏆" },
-                { value: "+25", label: "Días de Mundial", icon: "⚽" },
-                { value: "$2.000", label: "COP por día", icon: "💰" },
-                { value: "13", label: "Campos por partido", icon: "🎯" },
-                { value: "42", label: "Pts. máximo por partido", icon: "⭐" },
+                { value: "⚽", label: "JUEGA Y GANA", icon: "🔥" },
+                { value: "🎯", label: "PREDICE EL MUNDIAL", icon: "⚽" },
+                { value: "🏆", label: "COMPITE CADA SEMANA", icon: "💪" },
+                { value: "🎁", label: "SORPRESAS CADA DÍA", icon: "✨" },
+                { value: "🚀", label: "¡PARTICIPA AHORA!", icon: "⭐" },
+                { value: "💰", label: "PREMIOS REALES", icon: "🏆" },
               ]}
             />
           </div>
@@ -178,20 +177,24 @@ export default function LandingPage() {
         <section className="relative z-10 px-6 py-16 max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <div className="animate-reveal" style={{animationDelay:'0.1s'}}>
-              <p className="text-3xl font-black" style={{color:'#ff1493'}}>+12.543</p>
-              <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.4)'}}>Participantes activos</p>
+              <span className="text-4xl block mb-2">⚽</span>
+              <p className="text-lg font-black" style={{color:'#ff1493'}}>JUEGA</p>
+              <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.4)'}}>Predice cada partido</p>
             </div>
             <div className="animate-reveal" style={{animationDelay:'0.2s'}}>
-              <p className="text-3xl font-black" style={{color:'#ff69b4'}}>+245.678</p>
-              <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.4)'}}>Predicciones realizadas</p>
+              <span className="text-4xl block mb-2">🎯</span>
+              <p className="text-lg font-black" style={{color:'#ff69b4'}}>ACUMULA</p>
+              <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.4)'}}>Puntos por acierto</p>
             </div>
             <div className="animate-reveal" style={{animationDelay:'0.3s'}}>
-              <p className="text-3xl font-black" style={{color:'#c500ff'}}>+8.765</p>
-              <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.4)'}}>Premios entregados</p>
+              <span className="text-4xl block mb-2">🏆</span>
+              <p className="text-lg font-black" style={{color:'#c500ff'}}>COMPARTE</p>
+              <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.4)'}}>Invita amigos</p>
             </div>
             <div className="animate-reveal" style={{animationDelay:'0.4s'}}>
-              <p className="text-3xl font-black text-white">+25</p>
-              <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.4)'}}>Días de Mundial por disfrutar</p>
+              <span className="text-4xl block mb-2">🎁</span>
+              <p className="text-lg font-black" style={{color:'#ffffff'}}>GANA</p>
+              <p className="text-xs mt-1" style={{color:'rgba(255,255,255,0.4)'}}>Premios cada semana</p>
             </div>
           </div>
         </section>

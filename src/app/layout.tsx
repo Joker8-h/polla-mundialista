@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { NavigationLoadingProvider } from "@/lib/navigation-loading";
+import { PageLoader } from "@/components/ui/page-loader";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,7 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={inter.className}>
       <body className="antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          <NavigationLoadingProvider>
+            {children}
+            <PageLoader />
+          </NavigationLoadingProvider>
+        </Providers>
       </body>
     </html>
   );

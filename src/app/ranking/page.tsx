@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { usePageLoader } from "@/lib/navigation-loading";
 
 interface RankingEntry {
   rank: number;
@@ -13,6 +14,8 @@ interface RankingEntry {
 
 export default function RankingPage() {
   const router = useRouter();
+  const { showLoader, hideLoader } = usePageLoader();
+  const initialLoad = useRef(true);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentWeekId, setCurrentWeekId] = useState<string | null>(null);
@@ -50,6 +53,7 @@ export default function RankingPage() {
       setRankings([]);
     }
     setLoading(false);
+    if (initialLoad.current) { initialLoad.current = false; hideLoader(); }
   }
 
   useEffect(() => {
@@ -74,7 +78,7 @@ export default function RankingPage() {
               <h1 className="text-lg font-bold text-white">Clasificación</h1>
               <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>{isLiveWeek ? "Semana actual en vivo" : "Semana anterior"}</p>
             </div>
-            <button onClick={() => router.push("/dashboard")} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
+            <button onClick={() => { showLoader(); router.push("/dashboard"); }} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
               Partidos
             </button>
           </header>
@@ -158,6 +162,7 @@ export default function RankingPage() {
 
 function Sidebar({ active }: { active: string }) {
   const router = useRouter();
+  const { showLoader } = usePageLoader();
   const nav = [
     { label: "Inicio", path: "/dashboard", icon: "🏠" },
     { label: "Partidos", path: "/dashboard", icon: "⚽" },
@@ -173,7 +178,7 @@ function Sidebar({ active }: { active: string }) {
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {nav.map((item) => (
-          <button key={item.label} onClick={() => router.push(item.path)}
+          <button key={item.label} onClick={() => { showLoader(); router.push(item.path); }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition"
             style={active === item.label ? {background:'rgba(255,20,147,0.2)', color:'#ff69b4', borderLeft:'2px solid #ff1493'} : {color:'rgba(255,105,180,0.5)'}}>
             <span className="text-base">{item.icon}</span>

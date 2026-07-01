@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { getFlagUrl } from "@/lib/flags";
+import { usePageLoader } from "@/lib/navigation-loading";
 
 interface MatchDetail {
   id: string; apiMatchId: number; homeTeam: string; awayTeam: string;
@@ -104,6 +105,8 @@ function MatchContent() {
   const router = useRouter();
   const params = useParams();
   const matchId = params.matchId as string;
+  const { showLoader, hideLoader } = usePageLoader();
+  const initialLoad = useRef(true);
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -137,6 +140,7 @@ function MatchContent() {
       setPlayers(data.players || []);
     } catch { /* ignore */ }
     setLoading(false);
+    if (initialLoad.current) { initialLoad.current = false; hideLoader(); }
   }, [matchId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -155,7 +159,7 @@ function MatchContent() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-sm font-black text-white" style={{background:'linear-gradient(135deg,#ff1493,#c500ff)'}}>⚽</div>
           <h1 className="text-xl font-black text-white">Inicia sesión para ver el detalle</h1>
           <p className="mt-2 text-sm" style={{color:'rgba(255,105,180,0.6)'}}>Tu sesión no quedó activa o expiró.</p>
-          <button onClick={() => router.push("/")} className="mt-5 w-full rounded-xl px-4 py-3 text-sm font-black text-white pink-button">
+          <button onClick={() => { showLoader(); router.push("/"); }} className="mt-5 w-full rounded-xl px-4 py-3 text-sm font-black text-white pink-button">
             Ir al inicio
           </button>
         </div>
@@ -186,7 +190,7 @@ function MatchContent() {
       
       <aside className="hidden w-[244px] shrink-0 lg:flex lg:flex-col relative z-10" style={{borderRight:'1px solid rgba(255,0,255,0.1)', background:'rgba(10,0,8,0.9)', backdropFilter:'blur(20px)'}}>
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2 transition-colors" style={{color:'rgba(255,105,180,0.6)'}}>
+          <button onClick={() => { showLoader(); router.push("/dashboard"); }} className="flex items-center gap-2 transition-colors" style={{color:'rgba(255,105,180,0.6)'}}>
             <span className="text-lg">←</span>
             <span className="text-xs font-semibold">Volver</span>
           </button>
@@ -195,8 +199,8 @@ function MatchContent() {
             <span className="font-black text-xs tracking-wider uppercase" style={{background:'linear-gradient(90deg, #fff, #ff69b4)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Fantasy Mundial</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => router.push("/ranking")} className="px-2 py-1 text-[10px] font-semibold rounded-lg transition-all" style={{color:'rgba(255,105,180,0.6)'}}>Ranking</button>
-            <button onClick={() => router.push("/perfil")} className="px-2 py-1 text-[10px] font-semibold rounded-lg transition-all" style={{color:'rgba(255,105,180,0.6)'}}>Perfil</button>
+            <button onClick={() => { showLoader(); router.push("/ranking"); }} className="px-2 py-1 text-[10px] font-semibold rounded-lg transition-all" style={{color:'rgba(255,105,180,0.6)'}}>Ranking</button>
+            <button onClick={() => { showLoader(); router.push("/perfil"); }} className="px-2 py-1 text-[10px] font-semibold rounded-lg transition-all" style={{color:'rgba(255,105,180,0.6)'}}>Perfil</button>
           </div>
         </div>
       </aside>
@@ -204,7 +208,7 @@ function MatchContent() {
       <div className="relative z-10 flex-1">
       <nav className="sticky top-0 z-50 backdrop-blur-xl lg:hidden" style={{background:'rgba(10,0,8,0.9)', borderBottom:'1px solid rgba(255,0,255,0.1)'}}>
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2 transition-colors" style={{color:'rgba(255,105,180,0.6)'}}>
+          <button onClick={() => { showLoader(); router.push("/dashboard"); }} className="flex items-center gap-2 transition-colors" style={{color:'rgba(255,105,180,0.6)'}}>
             <span className="text-lg">←</span>
             <span className="text-xs font-semibold">Volver</span>
           </button>
@@ -213,8 +217,8 @@ function MatchContent() {
             <span className="font-black text-xs tracking-wider uppercase" style={{background:'linear-gradient(90deg, #fff, #ff69b4)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Fantasy Mundial</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => router.push("/ranking")} className="px-2 py-1 text-[10px] font-semibold rounded-lg transition-all" style={{color:'rgba(255,105,180,0.6)'}}>Ranking</button>
-            <button onClick={() => router.push("/perfil")} className="px-2 py-1 text-[10px] font-semibold rounded-lg transition-all" style={{color:'rgba(255,105,180,0.6)'}}>Perfil</button>
+            <button onClick={() => { showLoader(); router.push("/ranking"); }} className="px-2 py-1 text-[10px] font-semibold rounded-lg transition-all" style={{color:'rgba(255,105,180,0.6)'}}>Ranking</button>
+            <button onClick={() => { showLoader(); router.push("/perfil"); }} className="px-2 py-1 text-[10px] font-semibold rounded-lg transition-all" style={{color:'rgba(255,105,180,0.6)'}}>Perfil</button>
           </div>
         </div>
       </nav>
@@ -426,7 +430,7 @@ function MatchContent() {
             <div className="rounded-2xl p-4" style={{background:'rgba(18,0,13,0.9)', border:'1px solid rgba(255,0,255,0.12)'}}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-bold uppercase tracking-widest" style={{color:'#ff69b4'}}>🏆 Ranking Semanal</p>
-                <button onClick={() => router.push("/ranking")} className="text-[10px] transition-colors" style={{color:'rgba(255,105,180,0.5)'}}>Ver todo</button>
+                <button onClick={() => { showLoader(); router.push("/ranking"); }} className="text-[10px] transition-colors" style={{color:'rgba(255,105,180,0.5)'}}>Ver todo</button>
               </div>
               <div className="space-y-2">
                 {weekRanking.length === 0 && <p className="text-xs text-center py-2" style={{color:'rgba(255,105,180,0.4)'}}>Sin datos aún</p>}
@@ -446,7 +450,7 @@ function MatchContent() {
                 {upcomingMatches.map((m) => {
                   const d = new Date(m.matchDate);
                   return (
-                    <button key={m.id} onClick={() => router.push(`/match/${m.id}`)}
+                    <button key={m.id} onClick={() => { showLoader(); router.push(`/match/${m.id}`); }}
                       className="w-full flex items-center gap-2 p-2 rounded-xl transition-all text-left" style={{background:'rgba(255,0,255,0.025)'}}>
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px]" style={{color:'rgba(255,105,180,0.4)'}}>{d.toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short" })} - {d.toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit" })}</p>

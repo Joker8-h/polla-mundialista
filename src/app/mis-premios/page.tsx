@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePageLoader } from "@/lib/navigation-loading";
 
 interface PrizeWon {
   id: string;
@@ -16,6 +17,7 @@ interface PrizeWon {
 
 export default function MisPremiosPage() {
   const router = useRouter();
+  const { showLoader, hideLoader } = usePageLoader();
   const [prizes, setPrizes] = useState<PrizeWon[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<PrizeWon | null>(null);
@@ -25,7 +27,7 @@ export default function MisPremiosPage() {
     fetch("/api/profile").then(r => r.json()).then(d => {
       setPrizes(d.winnings || []);
       setUserName(d.user?.name || "");
-    }).catch(() => router.push("/")).finally(() => setLoading(false));
+    }).catch(() => { showLoader(); router.push("/"); }).finally(() => { setLoading(false); hideLoader(); });
   }, [router]);
 
   if (loading) return (
@@ -42,7 +44,7 @@ export default function MisPremiosPage() {
             <h1 className="text-2xl font-black text-white">🎁 Mis Premios</h1>
             <p className="text-sm mt-1" style={{color:'rgba(255,105,180,0.5)'}}>Tus códigos ganados en Fantasy Mundial</p>
           </div>
-          <button onClick={() => router.push("/dashboard")} className="rounded-lg px-4 py-2 text-xs font-bold" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
+          <button onClick={() => { showLoader(); router.push("/dashboard"); }} className="rounded-lg px-4 py-2 text-xs font-bold" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
             Volver
           </button>
         </header>

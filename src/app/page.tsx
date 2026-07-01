@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Typewriter } from "@/components/ui/typewriter";
+import { usePageLoader } from "@/lib/navigation-loading";
 
 const Sparkles = dynamic(() => import("@/components/ui/sparkles").then(m => ({ default: m.Sparkles })), { ssr: false });
 const BackgroundPaths = dynamic(() => import("@/components/ui/background-paths").then(m => ({ default: m.BackgroundPaths })), { ssr: false });
@@ -15,6 +16,7 @@ const TYPE_WORDS = ["ACUMULA PUNTOS.", "COMPITE SEMANALMENTE.", "DESCIFRA EL JUE
 
 export default function LandingPage() {
   const router = useRouter();
+  const { showLoader, hideLoader } = usePageLoader();
   const [step, setStep] = useState<"landing" | "register" | "login">("landing");
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -22,6 +24,8 @@ export default function LandingPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => { hideLoader(); }, []);
 
   const handleRegister = async () => {
     setError("");
@@ -39,7 +43,7 @@ export default function LandingPage() {
         password,
         redirect: false,
       });
-      if (loginRes?.ok) { router.push("/dashboard"); router.refresh(); return; }
+      if (loginRes?.ok) { showLoader(); router.push("/dashboard"); router.refresh(); return; }
       setError("Cuenta creada. Inicia sesión.");
       setStep("login");
     } catch (e: unknown) {
@@ -58,7 +62,7 @@ export default function LandingPage() {
         password,
         redirect: false,
       });
-      if (res?.ok) { router.push("/dashboard"); router.refresh(); return; }
+      if (res?.ok) { showLoader(); router.push("/dashboard"); router.refresh(); return; }
       setError("WhatsApp o contraseña incorrectos");
     } catch {
       setError("Error al iniciar sesión");

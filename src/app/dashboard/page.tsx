@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useMemo, useState, useEffect } from "react";
+import { Suspense, useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getFlagUrl } from "@/lib/flags";
+import { usePageLoader } from "@/lib/navigation-loading";
 
 interface MatchData {
   id: string;
@@ -58,6 +59,8 @@ function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const paidParam = searchParams.get("paid") === "true";
+  const { showLoader, hideLoader } = usePageLoader();
+  const initialLoad = useRef(true);
   const [matches, setMatches] = useState<MatchData[]>([]);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [paidDays, setPaidDays] = useState<string[]>([]);
@@ -100,6 +103,7 @@ function DashboardContent() {
       if (matchData.paidDays) setPaidDays(matchData.paidDays);
     } catch {}
     setLoading(false);
+    if (initialLoad.current) { initialLoad.current = false; hideLoader(); }
   }
 
   useEffect(() => {
@@ -203,7 +207,7 @@ function DashboardContent() {
           {week && <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
             <section className="min-w-0 space-y-5">
               {featuredMatch ? (
-                <FeaturedMatch match={featuredMatch} onOpen={() => router.push(`/match/${featuredMatch.id}`)} />
+                <FeaturedMatch match={featuredMatch} onOpen={() => { showLoader(); router.push(`/match/${featuredMatch.id}`); }} />
               ) : (
                 <EmptyPanel title="No hay partidos hoy" text="Los partidos se sincronizan automáticamente." />
               )}
@@ -248,15 +252,15 @@ function DashboardContent() {
                 </div>
                 <div className="grid gap-3 lg:grid-cols-2">
                   {visibleMatches.map((match) => (
-                    <MatchCard key={match.id} match={match} locked={!isDayPaid} onOpen={() => router.push(`/match/${match.id}`)} />
+                    <MatchCard key={match.id} match={match} locked={!isDayPaid} onOpen={() => { showLoader(); router.push(`/match/${match.id}`); }} />
                   ))}
                 </div>
               </section>
             </section>
 
             <aside className="space-y-5">
-              <RankingPanel rankings={rankings} onOpen={() => router.push("/ranking")} />
-              <UpcomingPanel matches={matches.slice(0, 5)} onOpen={(id) => router.push(`/match/${id}`)} />
+              <RankingPanel rankings={rankings} onOpen={() => { showLoader(); router.push("/ranking"); }} />
+              <UpcomingPanel matches={matches.slice(0, 5)} onOpen={(id) => { showLoader(); router.push(`/match/${id}`); }} />
               <InfoPanel />
             </aside>
           </div>}
@@ -268,6 +272,7 @@ function DashboardContent() {
 
 function AppShell({ active, children }: { active: string; children: React.ReactNode }) {
   const router = useRouter();
+  const { showLoader } = usePageLoader();
   const nav = [
     { label: "Inicio", path: "/dashboard", icon: "🏠" },
     { label: "Partidos", path: "/dashboard", icon: "⚽" },
@@ -287,7 +292,7 @@ function AppShell({ active, children }: { active: string; children: React.ReactN
           {nav.map((item) => (
             <button
               key={item.label}
-              onClick={() => router.push(item.path)}
+              onClick={() => { showLoader(); router.push(item.path); }}
               className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition"
               style={active === item.label || (active === "Partidos" && item.label === "Inicio")
                 ? { background: 'rgba(255,20,147,0.2)', color: '#ff69b4', borderLeft: '2px solid #ff1493' }
@@ -302,10 +307,10 @@ function AppShell({ active, children }: { active: string; children: React.ReactN
           <p className="text-sm font-bold text-white">Fantasy Mundial</p>
           <p className="mt-2 text-xs" style={{color:'rgba(255,105,180,0.5)'}}>Copa Mundial FIFA 2026</p>
           <div className="mt-4 flex gap-2">
-            <button onClick={() => router.push("/ranking")} className="flex-1 rounded-lg px-3 py-2 text-xs font-bold text-white hover:opacity-80 transition-opacity" style={{border:'1px solid rgba(255,255,255,0.15)'}}>
+            <button onClick={() => { showLoader(); router.push("/ranking"); }} className="flex-1 rounded-lg px-3 py-2 text-xs font-bold text-white hover:opacity-80 transition-opacity" style={{border:'1px solid rgba(255,255,255,0.15)'}}>
               Ranking
             </button>
-            <button onClick={() => router.push("/mis-premios")} className="flex-1 rounded-lg px-3 py-2 text-xs font-bold text-white hover:opacity-80 transition-opacity" style={{border:'1px solid rgba(255,20,147,0.3)', background:'rgba(255,20,147,0.15)'}}>
+            <button onClick={() => { showLoader(); router.push("/mis-premios"); }} className="flex-1 rounded-lg px-3 py-2 text-xs font-bold text-white hover:opacity-80 transition-opacity" style={{border:'1px solid rgba(255,20,147,0.3)', background:'rgba(255,20,147,0.15)'}}>
               Premios
             </button>
           </div>
@@ -318,6 +323,7 @@ function AppShell({ active, children }: { active: string; children: React.ReactN
 
 function HeaderBar({ title, subtitle }: { title: string; subtitle: string }) {
   const router = useRouter();
+  const { showLoader } = usePageLoader();
   return (
     <header className="mb-5 flex min-h-14 items-center justify-between gap-4 pb-4" style={{borderBottom:'1px solid rgba(255,0,255,0.1)'}}>
       <div>
@@ -326,13 +332,13 @@ function HeaderBar({ title, subtitle }: { title: string; subtitle: string }) {
         <p className="text-xs" style={{color:'rgba(255,105,180,0.5)'}}>{subtitle}</p>
       </div>
       <div className="flex items-center gap-2">
-        <button onClick={() => router.push("/mis-premios")} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
+        <button onClick={() => { showLoader(); router.push("/mis-premios"); }} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
           Premios
         </button>
-        <button onClick={() => router.push("/ranking")} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
+        <button onClick={() => { showLoader(); router.push("/ranking"); }} className="rounded-lg px-3 py-2 text-xs font-bold transition-opacity hover:opacity-80" style={{border:'1px solid rgba(255,0,255,0.2)', color:'#ff69b4'}}>
           Ranking
         </button>
-        <button onClick={() => router.push("/perfil")} className="rounded-lg px-3 py-2 text-xs font-bold text-white transition-opacity hover:opacity-80 pink-button">
+        <button onClick={() => { showLoader(); router.push("/perfil"); }} className="rounded-lg px-3 py-2 text-xs font-bold text-white transition-opacity hover:opacity-80 pink-button">
           Perfil
         </button>
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { usePageLoader } from "@/lib/navigation-loading";
 
 interface ProfileUser {
   name: string;
@@ -40,6 +41,7 @@ interface ProfileWinning {
 
 export default function PerfilPage() {
   const router = useRouter();
+  const { showLoader, hideLoader } = usePageLoader();
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [predictions, setPredictions] = useState<ProfilePrediction[]>([]);
   const [winnings, setWinnings] = useState<ProfileWinning[]>([]);
@@ -50,7 +52,7 @@ export default function PerfilPage() {
       setUser(d.user);
       setPredictions(d.predictions || []);
       setWinnings(d.winnings || []);
-    }).catch(() => router.push("/"));
+    }).catch(() => { showLoader(); router.push("/"); }).finally(() => hideLoader());
   }, [router]);
 
   if (!user) {
@@ -196,6 +198,7 @@ export default function PerfilPage() {
 
 function Sidebar({ active }: { active: string }) {
   const router = useRouter();
+  const { showLoader } = usePageLoader();
   const nav = [
     { label: "Inicio", path: "/dashboard", icon: "🏠" },
     { label: "Partidos", path: "/dashboard", icon: "⚽" },
@@ -211,7 +214,7 @@ function Sidebar({ active }: { active: string }) {
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {nav.map((item) => (
-          <button key={item.label} onClick={() => router.push(item.path)}
+          <button key={item.label} onClick={() => { showLoader(); router.push(item.path); }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition"
             style={active === item.label ? {background:'rgba(255,20,147,0.2)', color:'#ff69b4', borderLeft:'2px solid #ff1493'} : {color:'rgba(255,105,180,0.5)'}}>
             <span className="text-base">{item.icon}</span>

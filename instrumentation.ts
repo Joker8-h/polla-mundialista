@@ -15,7 +15,7 @@ export async function register() {
 
     function mapStatus(bzStatus: string): string {
       if (bzStatus === "finished" || bzStatus === "ended") return "finished";
-      if (["live","inprogress","halftime","HT","1H","2H","1st_half","2nd_half","extra_time","penalty"].includes(bzStatus)) return "live";
+      if (["live","inprogress","halftime","HT","1H","2H","1st_half","2nd_half","extra_time","extratime","penalty","penalties","penalty_shootout","shootout"].includes(bzStatus)) return "live";
       return "scheduled";
     }
 
@@ -165,7 +165,7 @@ export async function register() {
 
               // Freeze 90' score when extra time or penalties begin
               const rawStatus = event.status;
-              if (existing.homeScore90 === null && (rawStatus === "extra_time" || rawStatus === "penalty")) {
+              if (existing.homeScore90 === null && (rawStatus === "extra_time" || rawStatus === "extratime" || rawStatus === "penalty" || rawStatus === "penalties" || rawStatus === "penalty_shootout")) {
                 if (currentScoreHome !== null && currentScoreAway !== null) {
                   updateData.homeScore90 = currentScoreHome;
                   updateData.awayScore90 = currentScoreAway;

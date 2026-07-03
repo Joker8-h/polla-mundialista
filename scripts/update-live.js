@@ -12,7 +12,7 @@ const p = new PrismaClient();
 
 function mapStatus(bzStatus) {
   if (bzStatus === "finished" || bzStatus === "ended") return "finished";
-  if (["live", "inprogress", "halftime", "HT", "1H", "2H", "1st_half", "2nd_half", "extra_time", "penalty"].includes(bzStatus)) return "live";
+  if (["live", "inprogress", "halftime", "HT", "1H", "2H", "1st_half", "2nd_half", "extra_time", "extratime", "penalty", "penalties", "penalty_shootout", "shootout"].includes(bzStatus)) return "live";
   return "scheduled";
 }
 
@@ -78,7 +78,7 @@ async function main() {
       };
 
       // Freeze 90' score
-      if (existing.homeScore90 === null && (event.status === "extra_time" || event.status === "penalty")) {
+      if (existing.homeScore90 === null && (event.status === "extra_time" || event.status === "extratime" || event.status === "penalty" || event.status === "penalties" || event.status === "penalty_shootout")) {
         if (currentScoreHome !== null && currentScoreAway !== null) {
           data.homeScore90 = currentScoreHome;
           data.awayScore90 = currentScoreAway;

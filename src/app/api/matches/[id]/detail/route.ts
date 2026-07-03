@@ -111,6 +111,14 @@ export async function GET(
       }
     }
 
+    let penaltyHome = 0;
+    let penaltyAway = 0;
+    for (const i of incidents) {
+      if (i.type === "goal" && i.goal_type === "penalty_shootout") {
+        if (i.is_home) penaltyHome++;
+        else penaltyAway++;
+      }
+    }
 
     const actualScorers = goalScorers.map((g) => g.player);
 
@@ -253,6 +261,8 @@ export async function GET(
       incidents,
       lineups,
       goalScorers,
+      penaltyHome,
+      penaltyAway,
       players: {
         home: { teamName: match.homeTeam, players: homePlayers.map(p => ({ id: p.id, name: p.name })) },
         away: { teamName: match.awayTeam, players: awayPlayers.map(p => ({ id: p.id, name: p.name })) },

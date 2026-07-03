@@ -18,6 +18,7 @@ interface MatchDetail {
   yellowCards: number | null; redCards: number | null; saves: number | null;
   accuratePass: number | null; totalCross: number | null; substitutions: number | null;
   currentMinute: number | null;
+  penaltyHome: number | null; penaltyAway: number | null;
 }
 
 interface LiveStats {
@@ -266,6 +267,11 @@ function MatchContent() {
                     {isFinished && <span className="mt-1 text-[9px] font-bold bg-white/10 px-2 py-0.5 rounded-full" style={{color:'rgba(255,105,180,0.6)'}}>FINAL</span>}
                     {match.decidedBy === "extra_time" && <span className="mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(255,165,0,0.2)', color:'#fbbf24'}}>T. EXTRA</span>}
                     {match.decidedBy === "penalties" && <span className="mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(255,20,147,0.2)', color:'#ff69b4'}}>PENALES</span>}
+                    {match.decidedBy === "penalties" && match.penaltyHome != null && match.penaltyAway != null && (
+                      <span className="mt-1 text-sm font-black tabular-nums" style={{color:'#ff69b4'}}>
+                        {match.penaltyHome} : {match.penaltyAway}
+                      </span>
+                    )}
                   </div>
                   <span className="text-5xl md:text-7xl font-black text-white tabular-nums">{match.awayScore ?? "?"}</span>
                 </div>
@@ -289,6 +295,9 @@ function MatchContent() {
           {match.winnerTeam && (match.decidedBy === "extra_time" || match.decidedBy === "penalties") && (
             <p className="text-center text-xs mt-2 font-bold" style={{color:'#ff69b4'}}>
               Avanza: {match.winnerTeam === "home" ? match.homeTeam : match.awayTeam}
+              {match.decidedBy === "penalties" && match.penaltyHome != null && match.penaltyAway != null && (
+                <span style={{color:'rgba(255,105,180,0.7)'}}> ({match.penaltyHome}-{match.penaltyAway} penales)</span>
+              )}
             </p>
           )}
           <p className="text-center text-xs mt-4" style={{color:'rgba(255,105,180,0.4)'}}>{dateStr}</p>

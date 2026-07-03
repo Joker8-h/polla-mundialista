@@ -108,9 +108,21 @@ function DashboardContent() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 15000);
-    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!week?.id) return;
+    const source = new EventSource(`/api/live/dashboard?weekId=${week.id}`);
+    source.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.matches) setMatches(data.matches);
+        if (data.rankings) setRankings(data.rankings);
+        if (data.paidDays) setPaidDays(data.paidDays);
+      } catch {}
+    };
+    return () => source.close();
+  }, [week?.id]);
 
   useEffect(() => {
     if (matches.length > 0 && !selectedDay) {

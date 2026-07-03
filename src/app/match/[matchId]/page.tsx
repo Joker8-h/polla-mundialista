@@ -148,11 +148,23 @@ function MatchContent() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    if (!match) return;
-    if (match.status !== "live" && match.status !== "inprogress") return;
-    const interval = setInterval(fetchData, 15000);
-    return () => clearInterval(interval);
-  }, [match, fetchData]);
+    const source = new EventSource(`/api/live/match/${matchId}`);
+    source.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.match) setMatch(data.match);
+        if (data.liveStats !== undefined) setLiveStats(data.liveStats);
+        if (data.incidents) setIncidents(data.incidents);
+        if (data.lineups) setLineups(data.lineups);
+        if (data.goalScorers) setGoalScorers(data.goalScorers);
+        if (data.userPrediction !== undefined) setUserPrediction(data.userPrediction);
+        if (data.allPredictions) setAllPredictions(data.allPredictions);
+        if (data.upcomingMatches) setUpcomingMatches(data.upcomingMatches);
+        if (data.weekRanking) setWeekRanking(data.weekRanking);
+      } catch {}
+    };
+    return () => source.close();
+  }, [matchId]);
 
   if (authRequired) {
     return (

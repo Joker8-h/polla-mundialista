@@ -114,25 +114,17 @@ export async function GET(
     const actualScorers = goalScorers.map((g) => g.player);
 
     let predictionWithPoints = null;
-    if (userPrediction && isFinished) {
+    if (isFinished) {
       const { calculatePoints } = await import("@/lib/scoring");
-      const pts = calculatePoints(
-        {
-          homeScore: userPrediction.homeScore,
-          awayScore: userPrediction.awayScore,
-          winner: userPrediction.winner,
-          goalscorer: userPrediction.goalscorer,
-          totalShots: userPrediction.totalShots,
-          shotsOnGoal: userPrediction.shotsOnGoal,
-          saves: userPrediction.saves,
-          fouls: userPrediction.fouls,
-          yellowCards: userPrediction.yellowCards,
-          redCards: userPrediction.redCards,
-          substitutions: userPrediction.substitutions,
-          accuratePass: userPrediction.accuratePass,
-          totalCross: userPrediction.totalCross,
-        },
-        {
+
+      // Check if any predictions need scoring (totalPoints=0 for a finished match)
+      const allPredictionsForMatch = await prisma.prediction.findMany({
+        where: { matchId: id, type: "base" },
+      });
+      const needsScoring = allPredictionsForMatch.some(p => p.totalPoints === 0);
+
+      if (needsScoring && allPredictionsForMatch.length > 0) {
+        const matchData = {
           homeScore: match.homeScore,
           awayScore: match.awayScore,
           homeScore90: match.homeScore90,
@@ -148,10 +140,67 @@ export async function GET(
           substitutions: match.substitutions,
           accuratePass: match.accuratePass,
           totalCross: match.totalCross,
-        },
-        actualScorers
-      );
-      predictionWithPoints = { ...userPrediction, points: pts };
+        };
+
+        // Persist points for ALL predictions of this match
+        for (const pred of allPredictionsForMatch) {
+          const pts = calculatePoints(
+            {
+              homeScore: pred.homeScore, awayScore: pred.awayScore,
+              winner: pred.winner, goalscorer: pred.goalscorer,
+              totalShots: pred.totalShots, shotsOnGoal: pred.shotsOnGoal,
+              saves: pred.saves, fouls: pred.fouls,
+              yellowCards: pred.yellowCards, redCards: pred.redCards,
+              substitutions: pred.substitutions, accuratePass: pred.accuratePass,
+              totalCross: pred.totalCross,
+            },
+            matchData,
+            actualScorers
+          );
+          await prisma.prediction.update({
+            where: { id: pred.id },
+            data: {
+              homeScorePts: pts.homeScorePts,
+              winnerPts: pts.winnerPts,
+              goalscorerPts: pts.goalscorerPts,
+              totalShotsPts: pts.totalShotsPts,
+              shotsOnGoalPts: pts.shotsOnGoalPts,
+              savesPts: pts.savesPts,
+              foulsPts: pts.foulsPts,
+              yellowCardsPts: pts.yellowCardsPts,
+              redCardsPts: pts.redCardsPts,
+              substitutionsPts: pts.substitutionsPts,
+              accuratePassPts: pts.accuratePassPts,
+              totalCrossPts: pts.totalCrossPts,
+              totalPoints: pts.totalPoints,
+            },
+          });
+        }
+
+        // Re-fetch user prediction with updated points
+        const updatedPrediction = await prisma.prediction.findFirst({
+          where: { userId, matchId: id, type: "base" },
+        });
+        if (updatedPrediction) {
+          const userPts = calculatePoints(
+            {
+              homeScore: updatedPrediction.homeScore, awayScore: updatedPrediction.awayScore,
+              winner: updatedPrediction.winner, goalscorer: updatedPrediction.goalscorer,
+              totalShots: updatedPrediction.totalShots, shotsOnGoal: updatedPrediction.shotsOnGoal,
+              saves: updatedPrediction.saves, fouls: updatedPrediction.fouls,
+              yellowCards: updatedPrediction.yellowCards, redCards: updatedPrediction.redCards,
+              substitutions: updatedPrediction.substitutions, accuratePass: updatedPrediction.accuratePass,
+              totalCross: updatedPrediction.totalCross,
+            },
+            matchData,
+            actualScorers
+          );
+          predictionWithPoints = { ...updatedPrediction, points: userPts };
+        }
+      } else if (userPrediction) {
+        // Points already persisted, use DB values
+        predictionWithPoints = { ...userPrediction };
+      }
     } else if (userPrediction) {
       predictionWithPoints = { ...userPrediction };
     }

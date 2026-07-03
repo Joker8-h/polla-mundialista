@@ -12,6 +12,7 @@ export async function register() {
     } = await import("@/lib/bzzoiro");
     const { calculatePoints, calculatePlayerGoalPoints } = await import("@/lib/scoring");
     const { toColombiaDate, getWeekForColombiaDate, nowColombia } = await import("@/lib/colombia-time");
+    const { closeWeekAndAssignPrizes } = await import("@/lib/week-closer");
 
     function mapStatus(bzStatus: string): string {
       if (bzStatus === "finished" || bzStatus === "ended") return "finished";
@@ -240,6 +241,20 @@ export async function register() {
                   await scoreMatchFallback(existing.id);
                 }
                 console.log(`[Sync] Finalizado: ${event.home_team} ${event.home_score}-${event.away_score} ${event.away_team}`);
+
+                // Auto-close week if all matches finished
+                try {
+                  const weekMatches = await prisma.match.findMany({
+                    where: { weekId: week.id },
+                  });
+                  const allFinished = weekMatches.every(m => m.status === "finished");
+                  if (allFinished && !week.isClosed) {
+                    const result = await closeWeekAndAssignPrizes(week.id);
+                    console.log(`[Sync] ${result.message}`);
+                  }
+                } catch (e) {
+                  console.error("[Sync] Error auto-cerrando semana:", e);
+                }
               } else {
                 await prisma.match.update({ where: { id: existing.id }, data: updateData });
               }

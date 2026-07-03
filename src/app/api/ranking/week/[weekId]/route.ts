@@ -10,6 +10,55 @@ export async function GET(_req: Request, { params }: { params: Promise<{ weekId:
       return NextResponse.json({ error: "Semana no encontrada" }, { status: 404 });
     }
 
+    // Ensure points are persisted for all finished matches in this week
+    const finishedMatches = await prisma.match.findMany({
+      where: { weekId, status: "finished", homeScore: { not: null } },
+    });
+
+    for (const match of finishedMatches) {
+      const unscoredPredictions = await prisma.prediction.findMany({
+        where: { matchId: match.id, type: "base", totalPoints: 0 },
+      });
+
+      if (unscoredPredictions.length > 0) {
+        const { fetchIncidents, getGoalScorers } = await import("@/lib/bzzoiro");
+        const { calculatePoints } = await import("@/lib/scoring");
+
+        try {
+          const incidents = await fetchIncidents(match.apiMatchId);
+          const scorers = getGoalScorers(incidents).map((s) => s.player);
+          const matchData = {
+            homeScore: match.homeScore, awayScore: match.awayScore,
+            homeScore90: match.homeScore90, awayScore90: match.awayScore90,
+            winnerTeam: match.winnerTeam, decidedBy: match.decidedBy,
+            totalShots: match.totalShots, shotsOnGoal: match.shotsOnGoal,
+            saves: match.saves, fouls: match.fouls,
+            yellowCards: match.yellowCards, redCards: match.redCards,
+            substitutions: match.substitutions, accuratePass: match.accuratePass,
+            totalCross: match.totalCross,
+          };
+
+          for (const pred of unscoredPredictions) {
+            const pts = calculatePoints(pred, matchData, scorers);
+            await prisma.prediction.update({
+              where: { id: pred.id },
+              data: {
+                homeScorePts: pts.homeScorePts, winnerPts: pts.winnerPts,
+                goalscorerPts: pts.goalscorerPts, totalShotsPts: pts.totalShotsPts,
+                shotsOnGoalPts: pts.shotsOnGoalPts, savesPts: pts.savesPts,
+                foulsPts: pts.foulsPts, yellowCardsPts: pts.yellowCardsPts,
+                redCardsPts: pts.redCardsPts, substitutionsPts: pts.substitutionsPts,
+                accuratePassPts: pts.accuratePassPts, totalCrossPts: pts.totalCrossPts,
+                totalPoints: pts.totalPoints,
+              },
+            });
+          }
+        } catch (e) {
+          console.error(`Error scoring match ${match.id} for ranking:`, e);
+        }
+      }
+    }
+
     const rankings = await prisma.prediction.groupBy({
       by: ["userId"],
       where: { match: { weekId } },

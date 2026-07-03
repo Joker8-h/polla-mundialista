@@ -11,6 +11,8 @@ interface MatchDetail {
   homeTeamId: number; awayTeamId: number; matchDate: string;
   status: string; groupName: string | null; roundNumber: number | null;
   homeScore: number | null; awayScore: number | null;
+  homeScore90: number | null; awayScore90: number | null;
+  winnerTeam: string | null; decidedBy: string | null;
   homeTeamImageUrl: string; awayTeamImageUrl: string;
   totalShots: number | null; shotsOnGoal: number | null; fouls: number | null;
   yellowCards: number | null; redCards: number | null; saves: number | null;
@@ -250,6 +252,8 @@ function MatchContent() {
                     <span className="text-2xl font-bold" style={{color:'rgba(255,0,255,0.4)'}}>:</span>
                     {isLive && <span className="mt-1 text-[9px] font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full animate-pulse">{match.currentMinute ? `${match.currentMinute}' EN VIVO` : "EN VIVO"}</span>}
                     {isFinished && <span className="mt-1 text-[9px] font-bold bg-white/10 px-2 py-0.5 rounded-full" style={{color:'rgba(255,105,180,0.6)'}}>FINAL</span>}
+                    {match.decidedBy === "extra_time" && <span className="mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(255,165,0,0.2)', color:'#fbbf24'}}>T. EXTRA</span>}
+                    {match.decidedBy === "penalties" && <span className="mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:'rgba(255,20,147,0.2)', color:'#ff69b4'}}>PENALES</span>}
                   </div>
                   <span className="text-5xl md:text-7xl font-black text-white tabular-nums">{match.awayScore ?? "?"}</span>
                 </div>
@@ -270,6 +274,11 @@ function MatchContent() {
               </div>
             </div>
           </div>
+          {match.winnerTeam && (match.decidedBy === "extra_time" || match.decidedBy === "penalties") && (
+            <p className="text-center text-xs mt-2 font-bold" style={{color:'#ff69b4'}}>
+              Avanza: {match.winnerTeam === "home" ? match.homeTeam : match.awayTeam}
+            </p>
+          )}
           <p className="text-center text-xs mt-4" style={{color:'rgba(255,105,180,0.4)'}}>{dateStr}</p>
         </div>
       </div>

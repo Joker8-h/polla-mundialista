@@ -60,6 +60,7 @@ export async function register() {
         const allScorers = getGoalScorers(incidents);
         const scorersNames = allScorers.map((s) => s.player);
         const predictions = await prisma.prediction.findMany({ where: { matchId } });
+
         const playerPredictions = await prisma.playerGoalPrediction.findMany({ where: { matchId } });
         for (const p of predictions) {
           const pts = calculatePoints(p, match, scorersNames);
@@ -84,12 +85,17 @@ export async function register() {
           let totalPoints = 0;
           let homeScorePts = 0;
           let winnerPts = 0;
-          if (p.homeScore === match.homeScore && p.awayScore === match.awayScore) { homeScorePts = 10; totalPoints += 10; }
+
+          const scoreHome = match.homeScore90 ?? match.homeScore;
+          const scoreAway = match.awayScore90 ?? match.awayScore;
+          if (p.homeScore === scoreHome && p.awayScore === scoreAway) { homeScorePts = 10; totalPoints += 10; }
+
           const predictedWinner = p.homeScore > p.awayScore ? "home" : p.homeScore < p.awayScore ? "away" : "draw";
-          const h = match.homeScore ?? 0;
-          const a = match.awayScore ?? 0;
-          const actualWinner = h > a ? "home" : h < a ? "away" : "draw";
+          const actualWinner = match.winnerTeam
+            ? match.winnerTeam
+            : scoreHome > scoreAway ? "home" : scoreHome < scoreAway ? "away" : "draw";
           if (predictedWinner === actualWinner) { winnerPts = 5; totalPoints += 5; }
+
           await prisma.prediction.update({
             where: { id: p.id },
             data: { homeScorePts, winnerPts, totalPoints },
@@ -144,16 +150,27 @@ export async function register() {
               });
               console.log(`[Sync] Creado: ${event.home_team} vs ${event.away_team} (${dateStr})`);
             } else {
+              const currentScoreHome = status !== "scheduled" ? (event.home_score ?? null) : existing.homeScore;
+              const currentScoreAway = status !== "scheduled" ? (event.away_score ?? null) : existing.awayScore;
               const updateData: Record<string, unknown> = {
                 status,
                 homeTeam: event.home_team,
                 awayTeam: event.away_team,
                 homeTeamId: event.home_team_id,
                 awayTeamId: event.away_team_id,
-                homeScore: status !== "scheduled" ? (event.home_score ?? null) : existing.homeScore,
-                awayScore: status !== "scheduled" ? (event.away_score ?? null) : existing.awayScore,
+                homeScore: currentScoreHome,
+                awayScore: currentScoreAway,
                 currentMinute: event.current_minute ?? existing.currentMinute,
               };
+
+              // Freeze 90' score when extra time or penalties begin
+              const rawStatus = event.status;
+              if (existing.homeScore90 === null && (rawStatus === "extra_time" || rawStatus === "penalty")) {
+                if (currentScoreHome !== null && currentScoreAway !== null) {
+                  updateData.homeScore90 = currentScoreHome;
+                  updateData.awayScore90 = currentScoreAway;
+                }
+              }
 
               if (existing.weekId !== week.id) {
                 updateData.weekId = week.id;
@@ -178,6 +195,34 @@ export async function register() {
                     totalCross: homeStats.totalCross + awayStats.totalCross,
                     substitutions: getTotalSubstitutions(incidents),
                   });
+
+                  // Determine winnerTeam and decidedBy
+                  const finalH = currentScoreHome as number | null;
+                  const finalA = currentScoreAway as number | null;
+                  if (finalH !== null && finalA !== null) {
+                    const has90 = existing.homeScore90 !== null || updateData.homeScore90 !== undefined;
+                    let decidedBy = "regular";
+                    let winnerTeam: string | null = null;
+
+                    if (finalH !== finalA) {
+                      decidedBy = has90 ? "extra_time" : "regular";
+                      winnerTeam = finalH > finalA ? "home" : "away";
+                    } else if (has90) {
+                      decidedBy = "penalties";
+                      const shootoutGoals = incidents.filter(i => i.type === "goal" && i.goal_type === "penalty_shootout");
+                      if (shootoutGoals.length > 0) {
+                        const homePens = shootoutGoals.filter(g => g.is_home).length;
+                        const awayPens = shootoutGoals.filter(g => !g.is_home).length;
+                        if (homePens !== awayPens) {
+                          winnerTeam = homePens > awayPens ? "home" : "away";
+                        }
+                      }
+                    }
+
+                    if (winnerTeam || decidedBy !== "regular") {
+                      Object.assign(updateData, { decidedBy, winnerTeam });
+                    }
+                  }
                 } catch {}
 
                 await prisma.match.update({ where: { id: existing.id }, data: updateData });

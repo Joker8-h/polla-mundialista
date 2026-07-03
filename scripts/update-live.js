@@ -68,15 +68,35 @@ async function main() {
         : "";
       const minute = event.current_minute ? ` [min ${event.current_minute}]` : "";
 
-      await p.match.update({
-        where: { id: existing.id },
-        data: {
-          status,
-          homeScore: status !== "scheduled" ? (event.home_score ?? null) : null,
-          awayScore: status !== "scheduled" ? (event.away_score ?? null) : null,
-          currentMinute: event.current_minute ?? null,
-        },
-      });
+      const currentScoreHome = status !== "scheduled" ? (event.home_score ?? null) : null;
+      const currentScoreAway = status !== "scheduled" ? (event.away_score ?? null) : null;
+      const data = {
+        status,
+        homeScore: currentScoreHome,
+        awayScore: currentScoreAway,
+        currentMinute: event.current_minute ?? null,
+      };
+
+      // Freeze 90' score
+      if (existing.homeScore90 === null && (event.status === "extra_time" || event.status === "penalty")) {
+        if (currentScoreHome !== null && currentScoreAway !== null) {
+          data.homeScore90 = currentScoreHome;
+          data.awayScore90 = currentScoreAway;
+        }
+      }
+
+      // Determine winnerTeam/decidedBy on finish
+      if (status === "finished" && currentScoreHome !== null && currentScoreAway !== null) {
+        const wasExtraOrPenalty = existing.homeScore90 !== null || data.homeScore90 !== undefined;
+        if (currentScoreHome !== currentScoreAway) {
+          data.decidedBy = wasExtraOrPenalty ? "extra_time" : "regular";
+          data.winnerTeam = currentScoreHome > currentScoreAway ? "home" : "away";
+        } else if (wasExtraOrPenalty) {
+          data.decidedBy = "penalties";
+        }
+      }
+
+      await p.match.update({ where: { id: existing.id }, data });
       console.log(`  ✅ ${event.home_team} vs ${event.away_team}${score}${minute} (Raw status: ${event.status}) → [${status}]`);
     }
   }

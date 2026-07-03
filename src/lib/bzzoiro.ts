@@ -198,12 +198,57 @@ export async function syncLiveMatchesIfNecessary() {
       if (event.status === "finished" || event.status === "ended") status = "finished";
       else if (["live", "halftime", "HT", "1H", "2H", "1st_half", "2nd_half", "extra_time", "penalty"].includes(event.status)) status = "live";
 
+      const currentScoreHome = status !== "scheduled" ? (event.home_score ?? null) : null;
+      const currentScoreAway = status !== "scheduled" ? (event.away_score ?? null) : null;
       const updateData: Record<string, unknown> = {
         status,
-        homeScore: status !== "scheduled" ? (event.home_score ?? null) : null,
-        awayScore: status !== "scheduled" ? (event.away_score ?? null) : null,
+        homeScore: currentScoreHome,
+        awayScore: currentScoreAway,
         currentMinute: event.current_minute ?? null,
       };
+
+      // Freeze 90' score when extra time or penalties begin
+      const frozen = await prisma.match.findUnique({ where: { apiMatchId: event.id }, select: { homeScore90: true, awayScore90: true } });
+      if (frozen && frozen.homeScore90 === null && (event.status === "extra_time" || event.status === "penalty")) {
+        if (currentScoreHome !== null && currentScoreAway !== null) {
+          updateData.homeScore90 = currentScoreHome;
+          updateData.awayScore90 = currentScoreAway;
+        }
+      }
+
+      // Determine winnerTeam and decidedBy when match finishes
+      if (status === "finished" && currentScoreHome !== null && currentScoreAway !== null) {
+        const wasExtraOrPenalty = frozen?.homeScore90 !== null;
+        let decidedBy = "regular";
+        let winnerTeam: string | null = null;
+
+        if (currentScoreHome !== currentScoreAway) {
+          // Clear winner — either regular or extra time
+          decidedBy = wasExtraOrPenalty ? "extra_time" : "regular";
+          winnerTeam = currentScoreHome > currentScoreAway ? "home" : "away";
+        } else if (wasExtraOrPenalty) {
+          // Draw at 120' — penalties decided it
+          decidedBy = "penalties";
+        }
+
+        if (winnerTeam || decidedBy === "penalties") {
+          if (decidedBy === "penalties") {
+            // Try to determine winner from penalty shootout incidents
+            try {
+              const incidents = await fetchIncidents(event.id).catch(() => []);
+              const shootoutGoals = incidents.filter(i => i.type === "goal" && i.goal_type === "penalty_shootout");
+              if (shootoutGoals.length > 0) {
+                const homePens = shootoutGoals.filter(g => g.is_home).length;
+                const awayPens = shootoutGoals.filter(g => !g.is_home).length;
+                if (homePens !== awayPens) {
+                  winnerTeam = homePens > awayPens ? "home" : "away";
+                }
+              }
+            } catch {}
+          }
+          Object.assign(updateData, { decidedBy, winnerTeam });
+        }
+      }
 
       if (status === "live" || status === "finished") {
         try {

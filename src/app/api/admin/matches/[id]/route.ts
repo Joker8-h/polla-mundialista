@@ -81,6 +81,10 @@ export async function PUT(
               {
                 homeScore: updated.homeScore,
                 awayScore: updated.awayScore,
+                homeScore90: updated.homeScore90,
+                awayScore90: updated.awayScore90,
+                winnerTeam: updated.winnerTeam,
+                decidedBy: updated.decidedBy,
                 totalShots: updated.totalShots,
                 shotsOnGoal: updated.shotsOnGoal,
                 saves: updated.saves,

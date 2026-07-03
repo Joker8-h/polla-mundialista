@@ -58,6 +58,10 @@ model Match {
   // Results (filled by API automatically)
   homeScore    Int?
   awayScore    Int?
+  homeScore90  Int?   // Score at 90' (frozen when extra time starts)
+  awayScore90  Int?
+  winnerTeam   String? // "home" or "away" — who advanced (after ET/penalties)
+  decidedBy    String? // "regular", "extra_time", "penalties"
   totalShots   Int?
   shotsOnGoal  Int?
   fouls        Int?

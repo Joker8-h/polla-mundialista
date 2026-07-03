@@ -98,15 +98,35 @@ async function main() {
         const score = status !== "scheduled" ? ` ${event.home_score}-${event.away_score}` : "";
         console.log(`  ✅ Creado: ${event.home_team} vs ${event.away_team}${score} [${status}]`);
       } else {
-        await p.match.update({
-          where: { id: existing.id },
-          data: {
-            status,
-            homeScore: status !== "scheduled" ? (event.home_score ?? null) : existing.homeScore,
-            awayScore: status !== "scheduled" ? (event.away_score ?? null) : existing.awayScore,
-            currentMinute: event.current_minute ?? existing.currentMinute,
-          },
-        });
+        const currentScoreHome = status !== "scheduled" ? (event.home_score ?? null) : existing.homeScore;
+        const currentScoreAway = status !== "scheduled" ? (event.away_score ?? null) : existing.awayScore;
+        const data = {
+          status,
+          homeScore: currentScoreHome,
+          awayScore: currentScoreAway,
+          currentMinute: event.current_minute ?? existing.currentMinute,
+        };
+
+        // Freeze 90' score
+        if (existing.homeScore90 === null && (event.status === "extra_time" || event.status === "penalty")) {
+          if (currentScoreHome !== null && currentScoreAway !== null) {
+            data.homeScore90 = currentScoreHome;
+            data.awayScore90 = currentScoreAway;
+          }
+        }
+
+        // Determine winnerTeam/decidedBy on finish
+        if (status === "finished" && currentScoreHome !== null && currentScoreAway !== null) {
+          const wasExtraOrPenalty = existing.homeScore90 !== null || data.homeScore90 !== undefined;
+          if (currentScoreHome !== currentScoreAway) {
+            data.decidedBy = wasExtraOrPenalty ? "extra_time" : "regular";
+            data.winnerTeam = currentScoreHome > currentScoreAway ? "home" : "away";
+          } else if (wasExtraOrPenalty) {
+            data.decidedBy = "penalties";
+          }
+        }
+
+        await p.match.update({ where: { id: existing.id }, data });
         const score = status !== "scheduled" ? ` ${event.home_score}-${event.away_score}` : "";
         console.log(`  🔄 Actualizado: ${event.home_team} vs ${event.away_team}${score} [${status}]`);
       }

@@ -136,6 +136,10 @@ export async function GET(
         {
           homeScore: match.homeScore,
           awayScore: match.awayScore,
+          homeScore90: match.homeScore90,
+          awayScore90: match.awayScore90,
+          winnerTeam: match.winnerTeam,
+          decidedBy: match.decidedBy,
           totalShots: match.totalShots,
           shotsOnGoal: match.shotsOnGoal,
           saves: match.saves,

@@ -42,7 +42,7 @@ export function colombiaDayStart(dateStr: string): Date {
 
 export function colombiaDayEnd(dateStr: string): Date {
   const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d, 4, 59, 59, 999));
+  return new Date(Date.UTC(y, m - 1, d + 1, 4, 59, 59, 999));
 }
 
 export function isSameColombianDay(d1: Date | string, d2: Date | string): boolean {

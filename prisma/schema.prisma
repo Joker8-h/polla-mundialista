@@ -111,6 +111,9 @@ model ExtraPredictionPurchase {
   user        User         @relation(fields: [userId], references: [id])
   match       Match        @relation(fields: [matchId], references: [id])
   predictions Prediction[]
+
+  @@index([userId])
+  @@index([matchId])
 }
 
 model Payment {
@@ -125,6 +128,9 @@ model Payment {
 
   user        User        @relation(fields: [userId], references: [id])
   dayPasses   DayPass[]
+
+  @@index([userId])
+  @@index([status])
 }
 
 model Prediction {
@@ -192,6 +198,8 @@ model PlayerGoalPrediction {
   match Match @relation(fields: [matchId], references: [id])
 
   @@unique([userId, matchId, playerId])
+  @@index([userId])
+  @@index([matchId])
 }
 
 model WeekPrize {
@@ -228,6 +236,9 @@ model WeeklyWinner {
   week      Week       @relation(fields: [weekId], references: [id])
   user      User       @relation(fields: [userId], references: [id])
   weekPrize WeekPrize? @relation(fields: [weekPrizeId], references: [id])
+
+  @@index([weekId])
+  @@index([userId])
 }
 
 model ApiKey {

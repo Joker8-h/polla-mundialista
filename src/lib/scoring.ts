@@ -57,9 +57,11 @@ export function calculatePoints(
     pts.homeScorePts = 10;
   }
 
+  const finalHome = match.homeScore ?? scoreHome;
+  const finalAway = match.awayScore ?? scoreAway;
   const actualWinner = match.winnerTeam
     ? match.winnerTeam
-    : scoreHome > scoreAway ? "home" : scoreHome < scoreAway ? "away" : "draw";
+    : finalHome > finalAway ? "home" : finalHome < finalAway ? "away" : "draw";
 
   const predWinner = prediction.winner;
   if (predWinner === actualWinner) {

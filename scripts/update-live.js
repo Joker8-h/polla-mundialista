@@ -4,7 +4,8 @@
  */
 const { PrismaClient } = require('@prisma/client');
 
-const API_KEY = "261c45543020e4f0919e2796417bf27744005aef";
+const API_KEY = process.env.BZZOIRO_API_KEY;
+if (!API_KEY) { console.error("BZZOIRO_API_KEY no configurado"); process.exit(1); }
 const API_URL = "https://sports.bzzoiro.com/api/v2";
 const headers = { Authorization: `Token ${API_KEY}` };
 
@@ -68,8 +69,8 @@ async function main() {
         : "";
       const minute = event.current_minute ? ` [min ${event.current_minute}]` : "";
 
-      const currentScoreHome = status !== "scheduled" ? (event.home_score ?? null) : null;
-      const currentScoreAway = status !== "scheduled" ? (event.away_score ?? null) : null;
+      const currentScoreHome = status !== "scheduled" ? (event.home_score ?? null) : existing.homeScore;
+      const currentScoreAway = status !== "scheduled" ? (event.away_score ?? null) : existing.awayScore;
       const data = {
         status,
         homeScore: currentScoreHome,

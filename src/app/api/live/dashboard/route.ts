@@ -92,8 +92,15 @@ export async function GET(req: NextRequest) {
         }
       };
 
-      await send();
-      const interval = setInterval(send, 5000);
+      let sending = false;
+      const safeSend = async () => {
+        if (sending) return;
+        sending = true;
+        try { await send(); } finally { sending = false; }
+      };
+
+      await safeSend();
+      const interval = setInterval(safeSend, 5000);
 
       req.signal.addEventListener("abort", () => {
         clearInterval(interval);

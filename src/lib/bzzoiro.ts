@@ -196,7 +196,7 @@ export async function syncLiveMatchesIfNecessary() {
     for (const event of relevant) {
       let status = "scheduled";
       if (event.status === "finished" || event.status === "ended") status = "finished";
-      else if (["live", "halftime", "HT", "1H", "2H", "1st_half", "2nd_half", "extra_time", "extratime", "penalty", "penalties", "penalty_shootout", "shootout"].includes(event.status)) status = "live";
+      else if (["live", "inprogress", "halftime", "HT", "1H", "2H", "1st_half", "2nd_half", "extra_time", "extratime", "penalty", "penalties", "penalty_shootout", "shootout"].includes(event.status)) status = "live";
 
       const currentScoreHome = status !== "scheduled" ? (event.home_score ?? null) : null;
       const currentScoreAway = status !== "scheduled" ? (event.away_score ?? null) : null;

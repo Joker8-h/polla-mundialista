@@ -57,9 +57,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
 });
 
-const AUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "polla-mundialista-secret-key-2026";
-if (!process.env.AUTH_SECRET && !process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "development") {
-  console.warn("AUTH_SECRET no configurado. Usando default. Define AUTH_SECRET o NEXTAUTH_SECRET en producción.");
+const AUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
+if (!AUTH_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SECRET no configurado en producción. Define AUTH_SECRET o NEXTAUTH_SECRET.");
+  }
+  console.warn("AUTH_SECRET no configurado. Usando modo desarrollo sin autenticación segura.");
 }
 
 export async function getAdminFromReq(req: Request): Promise<string | null> {
@@ -89,23 +92,10 @@ export async function getUserIdFromReq(req: Request): Promise<string | null> {
 
   const foundCookie = cookieNames.find((name) => cookieHeader.includes(name + "="));
 
-  if (process.env.NODE_ENV === "development") {
-    console.log("[auth] debug:", {
-      hasCookie: !!cookieHeader,
-      isSecure,
-      foundCookie: foundCookie || "none",
-      cookieKeys: cookieHeader.split(";").map((c) => c.trim().split("=")[0]),
-    });
-  }
-
   if (!foundCookie) {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[auth] no session cookie found, trying auth() fallback");
-    }
     try {
       const session = await auth();
       if (session?.user?.id) {
-        console.log("[auth] auth() fallback succeeded");
         return session.user.id;
       }
     } catch (e) {
@@ -120,7 +110,6 @@ export async function getUserIdFromReq(req: Request): Promise<string | null> {
       secret: AUTH_SECRET,
       secureCookie: isSecure,
     });
-    console.log("[auth] getToken result:", token ? { id: token.id, whatsapp: token.whatsapp } : "null");
     if (token?.id) return token.id as string;
   } catch (e) {
     console.error("[auth] getToken error:", e);

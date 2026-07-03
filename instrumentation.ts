@@ -241,20 +241,6 @@ export async function register() {
                   await scoreMatchFallback(existing.id);
                 }
                 console.log(`[Sync] Finalizado: ${event.home_team} ${event.home_score}-${event.away_score} ${event.away_team}`);
-
-                // Auto-close week if all matches finished
-                try {
-                  const weekMatches = await prisma.match.findMany({
-                    where: { weekId: week.id },
-                  });
-                  const allFinished = weekMatches.every(m => m.status === "finished");
-                  if (allFinished && !week.isClosed) {
-                    const result = await closeWeekAndAssignPrizes(week.id);
-                    console.log(`[Sync] ${result.message}`);
-                  }
-                } catch (e) {
-                  console.error("[Sync] Error auto-cerrando semana:", e);
-                }
               } else {
                 await prisma.match.update({ where: { id: existing.id }, data: updateData });
               }
@@ -263,6 +249,23 @@ export async function register() {
         }
       } catch (err) {
         console.error("[Sync] Error en sync:", err);
+      }
+
+      // Auto-close weeks after all matches synced
+      try {
+        const openWeeks = await prisma.week.findMany({
+          where: { isClosed: false },
+          include: { matches: true },
+        });
+        for (const w of openWeeks) {
+          const allFinished = w.matches.length > 0 && w.matches.every(m => m.status === "finished");
+          if (allFinished) {
+            const result = await closeWeekAndAssignPrizes(w.id);
+            console.log(`[Sync] ${result.message}`);
+          }
+        }
+      } catch (e) {
+        console.error("[Sync] Error auto-cerrando semanas:", e);
       }
     }
 

@@ -1,5 +1,4 @@
 import { prisma } from "./prisma";
-import { todayColombia } from "./colombia-time";
 
 function generateFACode(): string {
   const digits = Math.floor(1000 + Math.random() * 9000);
@@ -16,15 +15,25 @@ async function ensureUniqueCode(): Promise<string> {
 }
 
 export async function closeWeekAndAssignPrizes(weekId: string) {
+  // Atomic lock: only one instance can close this week
+  const lockResult = await prisma.week.updateMany({
+    where: { id: weekId, isClosed: false },
+    data: { isClosed: true },
+  });
+
+  if (lockResult.count === 0) {
+    return { assigned: 0, message: "Ya cerrada" };
+  }
+
   const week = await prisma.week.findUnique({
     where: { id: weekId },
     include: { prizes: true },
   });
-  if (!week || week.isClosed) return { assigned: 0, message: "Ya cerrada" };
+  if (!week) return { assigned: 0, message: "Semana no encontrada" };
 
   const rankings = await prisma.prediction.groupBy({
     by: ["userId"],
-    where: { match: { weekId } },
+    where: { match: { weekId }, totalPoints: { gt: 0 } },
     _sum: { totalPoints: true },
     orderBy: { _sum: { totalPoints: "desc" } },
   });
@@ -65,8 +74,6 @@ export async function closeWeekAndAssignPrizes(weekId: string) {
     });
     assigned++;
   }
-
-  await prisma.week.update({ where: { id: weekId }, data: { isClosed: true } });
 
   return {
     assigned,

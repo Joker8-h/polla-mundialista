@@ -117,13 +117,14 @@ export async function GET(
     if (isFinished) {
       const { calculatePoints } = await import("@/lib/scoring");
 
-      // Check if any predictions need scoring (totalPoints=0 for a finished match)
+      // Check if scoring has been done: if ALL predictions have totalPoints=0, scoring hasn't run yet
       const allPredictionsForMatch = await prisma.prediction.findMany({
         where: { matchId: id, type: "base" },
       });
-      const needsScoring = allPredictionsForMatch.some(p => p.totalPoints === 0);
+      const anyScored = allPredictionsForMatch.some(p => p.totalPoints > 0);
+      const needsScoring = !anyScored && allPredictionsForMatch.length > 0;
 
-      if (needsScoring && allPredictionsForMatch.length > 0) {
+      if (needsScoring) {
         const matchData = {
           homeScore: match.homeScore,
           awayScore: match.awayScore,

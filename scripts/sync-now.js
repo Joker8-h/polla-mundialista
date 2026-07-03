@@ -4,7 +4,8 @@
  */
 const { PrismaClient } = require('@prisma/client');
 
-const API_KEY = "261c45543020e4f0919e2796417bf27744005aef";
+const API_KEY = process.env.BZZOIRO_API_KEY;
+if (!API_KEY) { console.error("BZZOIRO_API_KEY no configurado"); process.exit(1); }
 const API_URL = "https://sports.bzzoiro.com/api/v2";
 const headers = { Authorization: `Token ${API_KEY}` };
 

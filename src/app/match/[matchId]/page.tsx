@@ -191,6 +191,19 @@ function MatchContent() {
   const timeStr = matchTime.toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit" });
   const dateStr = matchTime.toLocaleDateString("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
+  const getWinner = (): string | null => {
+    if (!isFinished) return null;
+    if (match.winnerTeam) return match.winnerTeam;
+    if (match.homeScore != null && match.awayScore != null) {
+      if (match.homeScore > match.awayScore) return "home";
+      if (match.awayScore > match.homeScore) return "away";
+    }
+    return null;
+  };
+  const winner = getWinner();
+  const isHomeWinner = winner === "home";
+  const isAwayWinner = winner === "away";
+
   const tabs = [
     { id: "resumen", label: "Resumen", icon: "📋" },
     { id: "estadisticas", label: "Estadísticas", icon: "📊" },
@@ -249,11 +262,22 @@ function MatchContent() {
           </div>
           <div className="flex items-center justify-center gap-6 md:gap-12">
             <div className="flex-1 flex flex-col items-center gap-3">
-              <div className="w-20 h-20 md:w-28 md:h-28 rounded-full flex items-center justify-center relative overflow-hidden" style={{border:'2px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.05)'}}>
+              <div className="w-20 h-20 md:w-28 md:h-28 rounded-full flex items-center justify-center relative overflow-hidden"
+                style={isHomeWinner ? {
+                  border: '3px solid #fbbf24',
+                  background: 'rgba(251,191,36,0.15)',
+                  boxShadow: '0 0 20px rgba(251,191,36,0.4), 0 0 40px rgba(251,191,36,0.2)',
+                } : {
+                  border: '2px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.05)',
+                }}>
                 <img src={match.homeTeamImageUrl || getFlagUrl(match.homeTeam)} alt={match.homeTeam} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getFlagUrl(match.homeTeam); }} />
               </div>
               <div className="text-center">
-                <p className="font-black text-lg md:text-xl text-white">{match.homeTeam}</p>
+                <p className={`font-black text-lg md:text-xl`}
+                  style={isHomeWinner ? {color: '#fbbf24'} : {color: 'white'}}>
+                  {isHomeWinner && "👑 "}{match.homeTeam}
+                </p>
                 <p className="text-[10px] uppercase" style={{color:'rgba(255,105,180,0.4)'}}>Local</p>
               </div>
             </div>
@@ -283,11 +307,22 @@ function MatchContent() {
               )}
             </div>
             <div className="flex-1 flex flex-col items-center gap-3">
-              <div className="w-20 h-20 md:w-28 md:h-28 rounded-full flex items-center justify-center relative overflow-hidden" style={{border:'2px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.05)'}}>
+              <div className="w-20 h-20 md:w-28 md:h-28 rounded-full flex items-center justify-center relative overflow-hidden"
+                style={isAwayWinner ? {
+                  border: '3px solid #fbbf24',
+                  background: 'rgba(251,191,36,0.15)',
+                  boxShadow: '0 0 20px rgba(251,191,36,0.4), 0 0 40px rgba(251,191,36,0.2)',
+                } : {
+                  border: '2px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.05)',
+                }}>
                 <img src={match.awayTeamImageUrl || getFlagUrl(match.awayTeam)} alt={match.awayTeam} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getFlagUrl(match.awayTeam); }} />
               </div>
               <div className="text-center">
-                <p className="font-black text-lg md:text-xl text-white">{match.awayTeam}</p>
+                <p className={`font-black text-lg md:text-xl`}
+                  style={isAwayWinner ? {color: '#fbbf24'} : {color: 'white'}}>
+                  {isAwayWinner && "👑 "}{match.awayTeam}
+                </p>
                 <p className="text-[10px] uppercase" style={{color:'rgba(255,105,180,0.4)'}}>Visitante</p>
               </div>
             </div>

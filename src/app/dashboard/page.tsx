@@ -19,6 +19,7 @@ interface MatchData {
   homeScore: number | null;
   awayScore: number | null;
   currentMinute: number | null;
+  winnerTeam: string | null;
 }
 
 interface RankingEntry {
@@ -358,10 +359,21 @@ function HeaderBar({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
+function getMatchWinner(match: MatchData): string | null {
+  if (match.status !== "finished") return null;
+  if (match.winnerTeam) return match.winnerTeam;
+  if (match.homeScore != null && match.awayScore != null) {
+    if (match.homeScore > match.awayScore) return "home";
+    if (match.awayScore > match.homeScore) return "away";
+  }
+  return null;
+}
+
 function FeaturedMatch({ match, onOpen }: { match: MatchData; onOpen: () => void }) {
   const isFinished = match.status === "finished";
   const isLive = match.status === "live" || match.status === "inprogress";
   const date = new Date(match.matchDate);
+  const winner = getMatchWinner(match);
   return (
     <button onClick={onOpen} className="w-full rounded-2xl p-5 text-left transition-all hover:scale-[1.01]" style={{background:'rgba(18,0,13,0.8)', border:'1px solid rgba(255,0,255,0.15)', boxShadow:'0 8px 32px rgba(255,20,147,0.1)'}}>
       <div className="mb-4 flex items-center justify-between">
@@ -372,7 +384,7 @@ function FeaturedMatch({ match, onOpen }: { match: MatchData; onOpen: () => void
         <StatusBadge status={match.status} time={date} minute={match.currentMinute} />
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 md:gap-8">
-        <TeamBlock name={match.homeTeam} align="right" />
+        <TeamBlock name={match.homeTeam} align="right" winner={winner === "home"} />
         <div className="text-center">
           {isFinished || isLive ? (
             <div className="flex items-center gap-3 text-4xl font-black tabular-nums text-white md:text-6xl">
@@ -385,25 +397,36 @@ function FeaturedMatch({ match, onOpen }: { match: MatchData; onOpen: () => void
           )}
           <p className="mt-2 text-xs" style={{color:'rgba(255,105,180,0.4)'}}>{date.toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit" })}</p>
         </div>
-        <TeamBlock name={match.awayTeam} align="left" />
+        <TeamBlock name={match.awayTeam} align="left" winner={winner === "away"} />
       </div>
     </button>
   );
 }
 
-function TeamBlock({ name, align }: { name: string; align: "left" | "right" }) {
+function TeamBlock({ name, align, winner = false }: { name: string; align: "left" | "right"; winner?: boolean }) {
   return (
     <div className={`flex items-center gap-3 ${align === "right" ? "justify-end text-right" : "justify-start text-left"}`}>
-      {align === "left" && <Flag name={name} />}
-      <p className="min-w-0 truncate text-base font-black text-white md:text-2xl">{name}</p>
-      {align === "right" && <Flag name={name} />}
+      {align === "left" && <Flag name={name} winner={winner} />}
+      <p className={`min-w-0 truncate text-base font-black md:text-2xl`}
+        style={winner ? {color: '#fbbf24'} : {color: 'white'}}>
+        {winner && "👑 "}{name}
+      </p>
+      {align === "right" && <Flag name={name} winner={winner} />}
     </div>
   );
 }
 
-function Flag({ name }: { name: string }) {
+function Flag({ name, winner = false }: { name: string; winner?: boolean }) {
   return (
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full" style={{border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.05)'}}>
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full"
+      style={winner ? {
+        border: '2px solid #fbbf24',
+        background: 'rgba(251,191,36,0.15)',
+        boxShadow: '0 0 12px rgba(251,191,36,0.4), 0 0 24px rgba(251,191,36,0.2)',
+      } : {
+        border: '1px solid rgba(255,255,255,0.1)',
+        background: 'rgba(255,255,255,0.05)',
+      }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={getFlagUrl(name)} alt="" className="h-full w-full object-cover" />
     </div>
@@ -415,6 +438,7 @@ function MatchCard({ match, locked, onOpen }: { match: MatchData; locked: boolea
   const isScored = match.status === "finished" || match.status === "live" || match.status === "inprogress";
   const isPast = new Date() > date;
   const effectiveLock = locked || isPast || isScored;
+  const winner = getMatchWinner(match);
   return (
     <button onClick={onOpen} className="rounded-xl p-3 text-left transition-all hover:scale-[1.01]" style={{background:'rgba(18,0,13,0.6)', border:'1px solid rgba(255,0,255,0.1)'}}>
       <div className="mb-3 flex items-center justify-between">
@@ -422,7 +446,7 @@ function MatchCard({ match, locked, onOpen }: { match: MatchData; locked: boolea
         <StatusBadge status={match.status} time={date} minute={match.currentMinute} />
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <MiniTeam name={match.homeTeam} />
+        <MiniTeam name={match.homeTeam} winner={winner === "home"} />
         <div className="min-w-16 text-center">
           {isScored ? (
             <span className="text-lg font-black tabular-nums text-white">{match.homeScore ?? "-"} - {match.awayScore ?? "-"}</span>
@@ -430,7 +454,7 @@ function MatchCard({ match, locked, onOpen }: { match: MatchData; locked: boolea
             <span className="rounded-md px-2 py-1 text-xs font-black" style={{background:'rgba(255,20,147,0.15)', color:'#ff69b4'}}>VS</span>
           )}
         </div>
-        <MiniTeam name={match.awayTeam} reverse />
+        <MiniTeam name={match.awayTeam} reverse winner={winner === "away"} />
       </div>
       <div className="mt-3 flex items-center justify-between rounded-lg px-3 py-2" style={{background:'rgba(255,0,255,0.04)'}}>
         <span className="text-xs font-bold" style={{color: effectiveLock ? 'rgba(255,105,180,0.5)' : '#ff69b4'}}>
@@ -442,12 +466,15 @@ function MatchCard({ match, locked, onOpen }: { match: MatchData; locked: boolea
   );
 }
 
-function MiniTeam({ name, reverse = false }: { name: string; reverse?: boolean }) {
+function MiniTeam({ name, reverse = false, winner = false }: { name: string; reverse?: boolean; winner?: boolean }) {
   return (
     <div className={`flex min-w-0 items-center gap-2 ${reverse ? "justify-end text-right" : ""}`}>
-      {!reverse && <Flag name={name} />}
-      <span className="truncate text-sm font-bold text-white">{name}</span>
-      {reverse && <Flag name={name} />}
+      {!reverse && <Flag name={name} winner={winner} />}
+      <span className={`truncate text-sm font-bold`}
+        style={winner ? {color: '#fbbf24'} : {color: 'white'}}>
+        {winner && "👑 "}{name}
+      </span>
+      {reverse && <Flag name={name} winner={winner} />}
     </div>
   );
 }

@@ -209,14 +209,21 @@ export async function register() {
                       winnerTeam = finalH > finalA ? "home" : "away";
                     } else if (has90) {
                       decidedBy = "penalties";
-                      const shootoutGoals = incidents.filter(i => i.type === "goal" && i.goal_type === "penalty_shootout");
-                      if (shootoutGoals.length > 0) {
-                        const homePens = shootoutGoals.filter(g => g.is_home).length;
-                        const awayPens = shootoutGoals.filter(g => !g.is_home).length;
-                        if (homePens !== awayPens) {
-                          winnerTeam = homePens > awayPens ? "home" : "away";
+                      // Fetch penalty shootout score from event detail
+                      try {
+                        const detail = await (await import("@/lib/bzzoiro")).fetchMatchDetail(event.id) as any;
+                        if (detail?.penalty_shootout) {
+                          const pensHome = detail.penalty_shootout.home ?? 0;
+                          const pensAway = detail.penalty_shootout.away ?? 0;
+                          if (pensHome > 0 || pensAway > 0) {
+                            updateData.penaltyHome = pensHome;
+                            updateData.penaltyAway = pensAway;
+                            if (pensHome !== pensAway) {
+                              winnerTeam = pensHome > pensAway ? "home" : "away";
+                            }
+                          }
                         }
-                      }
+                      } catch {}
                     }
 
                     if (winnerTeam || decidedBy !== "regular") {

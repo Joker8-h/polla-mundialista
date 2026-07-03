@@ -42,8 +42,6 @@ export async function GET(
           let incidents: any[] = [];
           let lineups = null;
           let goalScorers: { player: string; playerId: number; count: number }[] = [];
-          let penaltyHome = 0;
-          let penaltyAway = 0;
 
           if (isFinished || isLive) {
             try {
@@ -57,13 +55,6 @@ export async function GET(
               const awayStats = getTeamAggregateStats(stats, match.awayTeamId);
               const subs = getTotalSubstitutions(inc);
               goalScorers = getGoalScorers(inc);
-
-              for (const i of inc) {
-                if (i.type === "goal" && i.goal_type === "penalty_shootout") {
-                  if (i.is_home) penaltyHome++;
-                  else penaltyAway++;
-                }
-              }
 
               const apiHasData = homeStats.totalShots > 0 || homeStats.shotsOnGoal > 0 ||
                 homeStats.fouls > 0 || awayStats.totalShots > 0 || awayStats.fouls > 0;
@@ -210,8 +201,8 @@ export async function GET(
                 incidents,
                 lineups,
                 goalScorers,
-                penaltyHome,
-                penaltyAway,
+                penaltyHome: match.penaltyHome,
+                penaltyAway: match.penaltyAway,
                 userPrediction,
                 allPredictions: allPredictions.map((p) => ({
                   name: p.user.name,

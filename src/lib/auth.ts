@@ -58,11 +58,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 });
 
 const AUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
-if (!AUTH_SECRET) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("AUTH_SECRET no configurado en producción. Define AUTH_SECRET o NEXTAUTH_SECRET.");
-  }
-  console.warn("AUTH_SECRET no configurado. Usando modo desarrollo sin autenticación segura.");
+if (!AUTH_SECRET && process.env.NEXT_RUNTIME === "nodejs" && !process.env.CI) {
+  console.warn("AUTH_SECRET no configurado. Define AUTH_SECRET o NEXTAUTH_SECRET en Railway.");
 }
 
 export async function getAdminFromReq(req: Request): Promise<string | null> {

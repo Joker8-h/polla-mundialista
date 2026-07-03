@@ -3,7 +3,7 @@ import { todayColombia, toColombiaDate } from "./colombia-time";
 const API_KEY = process.env.BZZOIRO_API_KEY || "";
 const API_URL = process.env.BZZOIRO_API_URL || "https://sports.bzzoiro.com/api/v2";
 const CDN_URL = process.env.BZZOIRO_CDN_URL || "https://sports.bzzoiro.com/img";
-if (!API_KEY) console.error("BZZOIRO_API_KEY no configurada");
+if (!API_KEY && process.env.NEXT_RUNTIME === "nodejs") console.error("BZZOIRO_API_KEY no configurada");
 
 const headers = { Authorization: `Token ${API_KEY}` };
 

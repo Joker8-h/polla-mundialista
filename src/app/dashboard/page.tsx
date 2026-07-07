@@ -290,6 +290,7 @@ function AppShell({ active, children }: { active: string; children: React.ReactN
     { label: "Inicio", path: "/dashboard", icon: "🏠" },
     { label: "Partidos", path: "/dashboard", icon: "⚽" },
     { label: "Clasificación", path: "/ranking", icon: "🏆" },
+    { label: "Premios", path: "/premios", icon: "🎯" },
     { label: "Mis Premios", path: "/mis-premios", icon: "🎁" },
     { label: "Perfil", path: "/perfil", icon: "👤" },
   ];

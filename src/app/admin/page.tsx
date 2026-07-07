@@ -248,7 +248,7 @@ function PrizesTab() {
       const data = await res.json();
       setWeek(data.week);
       if (data.prizes?.length) { setPrizes(data.prizes); }
-      else { setPrizes(Array.from({ length: 10 }, (_, i) => ({ rank: i + 1, label: "", description: "", type: "cash", value: i === 0 ? undefined : i === 1 ? 100000 : i === 2 ? 50000 : undefined, unit: "cop" }))); }
+      else { setPrizes(Array.from({ length: 5 }, (_, i) => ({ rank: i + 1, label: "", description: "", type: "discount", value: undefined, unit: "percent" }))); }
     } catch {}
     setLoading(false);
   }, []);
@@ -275,7 +275,7 @@ function PrizesTab() {
       const res = await adminFetch("/api/admin/weeks", { method: "POST" });
       const data = await res.json();
       setWeek(data.week);
-      setPrizes(Array.from({ length: 10 }, (_, i) => ({ rank: i + 1, label: "", description: "", type: "cash", value: i === 0 ? undefined : i === 1 ? 100000 : i === 2 ? 50000 : undefined, unit: "cop" })));
+      setPrizes(Array.from({ length: 5 }, (_, i) => ({ rank: i + 1, label: "", description: "", type: "discount", value: undefined, unit: "percent" })));
       setToast({ msg: "Semana creada", type: "ok" });
     } catch { setToast({ msg: "Error al crear semana", type: "err" }); }
     setSaving(false);
@@ -318,14 +318,18 @@ function PrizesTab() {
                 <div key={p.rank} className="admin-section space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="w-8 text-center font-black text-sm shrink-0" style={p.rank <= 3 ? { color: p.rank === 1 ? "#ffd700" : p.rank === 2 ? "#c0c0c0" : "#cd7f32" } : { color: "#ff69b4" }}>#{p.rank}</span>
-                    <input className="flex-1 admin-input" placeholder={p.type === "toy" ? "Nombre del producto" : "Nombre del premio"} value={p.label} onChange={(e) => updatePrize(p.rank, "label", e.target.value)} />
+                    <input className="flex-1 admin-input" placeholder={p.type === "toy" ? "Nombre del producto" : p.type === "bono" ? "Nombre del bono" : "Nombre del premio"} value={p.label} onChange={(e) => updatePrize(p.rank, "label", e.target.value)} />
                     <div className="w-32">
-                      <AdminSelect value={p.type} options={[{ label: "Efectivo", value: "cash" }, { label: "Juguete", value: "toy" }, { label: "Descuento", value: "discount" }, { label: "Ticket", value: "free_ticket" }]} onChange={(v) => updatePrize(p.rank, "type", v)} />
+                      <AdminSelect value={p.type} options={[{ label: "Descuento %", value: "discount" }, { label: "Bono", value: "bono" }, { label: "Juguete", value: "toy" }, { label: "Ticket", value: "free_ticket" }]} onChange={(v) => updatePrize(p.rank, "type", v)} />
                     </div>
-                    {p.type !== "toy" ? (
+                    {p.type === "discount" ? (
+                      <input className="w-24 admin-input text-right" type="number" placeholder="Porcentaje %" value={p.value ?? ""} onChange={(e) => updatePrize(p.rank, "value", e.target.value ? Number(e.target.value) : undefined)} />
+                    ) : p.type === "bono" ? (
                       <input className="w-24 admin-input text-right" type="number" placeholder="Valor $" value={p.value ?? ""} onChange={(e) => updatePrize(p.rank, "value", e.target.value ? Number(e.target.value) : undefined)} />
-                    ) : (
+                    ) : p.type === "toy" ? (
                       <input className="w-24 admin-input text-right" type="number" placeholder="Precio" value={p.value ?? ""} onChange={(e) => updatePrize(p.rank, "value", e.target.value ? Number(e.target.value) : undefined)} />
+                    ) : (
+                      <div className="w-24" />
                     )}
                   </div>
                   <div className="pl-10">

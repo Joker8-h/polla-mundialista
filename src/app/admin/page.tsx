@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 
 interface ApiKey { id: string; name: string; key: string; description: string | null; isActive: boolean; lastUsedAt: string | null; }
-interface Winner { id: string; rank: number; code: string; claimed: boolean; claimedAt: string | null; user?: { name: string }; prize?: { label: string; value?: number; unit?: string } | null; }
+interface Winner { id: string; rank: number; code: string; claimed: boolean; claimedAt: string | null; user?: { name: string }; prize?: { label: string; value?: number; unit?: string } | null; week?: { number: number; startDate: string; endDate: string }; }
 interface Match { id: string; homeTeam: string; awayTeam: string; groupName: string | null; status: string; homeScore: number | null; awayScore: number | null; totalShots: number | null; shotsOnGoal: number | null; saves: number | null; fouls: number | null; yellowCards: number | null; redCards: number | null; accuratePass: number | null; totalCross: number | null; substitutions: number | null; currentMinute: number | null; }
 interface User { id: string; name: string; whatsapp: string; city: string | null; createdAt: string; }
 interface PrizeConfig { rank: number; label: string; description?: string; type: string; value?: number; unit?: string; minPurchase?: number; imageUrl?: string; }
@@ -171,29 +171,66 @@ export default function AdminPage() {
   );
 }
 
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-CO", { timeZone: "America/Bogota", weekday: "short", day: "numeric", month: "short" });
+}
+
 function WinnersTab() {
   const [winners, setWinners] = useState<Winner[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => { adminFetch("/api/admin/winners").then(r => r.json()).then(d => { setWinners(d.winners || []); setLoading(false); }).catch(() => setLoading(false)); }, []);
   if (loading) return <Spinner />;
   if (!winners.length) return <EmptyState icon="🏆" title="No hay ganadores aún" desc="Los ganadores aparecerán aquí cuando se cierre una semana." />;
+
+  const grouped = winners.reduce<Record<string, Winner[]>>((acc, w) => {
+    const key = w.week?.number ? `Semana ${w.week.number}` : "Otras";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(w);
+    return acc;
+  }, {});
+
+  const weekKeys = Object.keys(grouped).sort((a, b) => {
+    const na = parseInt(a.replace("Semana ", ""));
+    const nb = parseInt(b.replace("Semana ", ""));
+    return nb - na;
+  });
+
   return (
-    <div className="space-y-2">
-      {winners.map((w) => (
-        <div key={w.id} className="admin-row flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0" style={w.rank <= 3 ? { background: "linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,215,0,0.05))", color: "#ffd700" } : { background: "rgba(255,0,255,0.08)", color: "#ff69b4" }}>#{w.rank}</span>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-white truncate">{w.user?.name || "Sin nombre"}</p>
-              <p className="text-xs" style={{ color: "rgba(255,105,180,0.4)" }}>{w.prize?.label || "Premio"} · Semana {(w as any).week?.number || "-"}</p>
+    <div className="space-y-6">
+      {weekKeys.map((key) => {
+        const ws = grouped[key];
+        const weekInfo = ws[0].week;
+        const dateRange = weekInfo
+          ? `${formatDate(weekInfo.startDate)} — ${formatDate(weekInfo.endDate)}`
+          : "";
+        return (
+          <div key={key} className="admin-card overflow-hidden">
+            <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(255,0,255,0.08)", background: "rgba(255,0,255,0.03)" }}>
+              <h3 className="font-black text-sm text-white">{key}</h3>
+              {dateRange && (
+                <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,105,180,0.5)", textTransform: "capitalize" }}>{dateRange}</p>
+              )}
+            </div>
+            <div className="p-2 space-y-1">
+              {ws.map((w) => (
+                <div key={w.id} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.02]">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0" style={w.rank <= 3 ? { background: "linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,215,0,0.05))", color: "#ffd700" } : { background: "rgba(255,0,255,0.08)", color: "#ff69b4" }}>#{w.rank}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white truncate">{w.user?.name || "Sin nombre"}</p>
+                      <p className="text-xs" style={{ color: "rgba(255,105,180,0.4)" }}>{w.prize?.label || "Premio"}</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <code className="text-xs font-mono" style={{ color: "#4ade80" }}>{w.code}</code>
+                    <p className="text-[10px] mt-0.5" style={{ color: w.claimed ? "#4ade80" : "rgba(255,105,180,0.4)" }}>{w.claimed ? `Redimido ${w.claimedAt ? new Date(w.claimedAt).toLocaleDateString("es-CO") : ""}` : "Pendiente"}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="text-right shrink-0">
-            <code className="text-xs font-mono" style={{ color: "#4ade80" }}>{w.code}</code>
-            <p className="text-[10px] mt-0.5" style={{ color: w.claimed ? "#4ade80" : "rgba(255,105,180,0.4)" }}>{w.claimed ? `Redimido ${w.claimedAt ? new Date(w.claimedAt).toLocaleDateString("es-CO") : ""}` : "Pendiente"}</p>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

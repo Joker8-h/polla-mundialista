@@ -23,9 +23,9 @@ export async function POST(req: NextRequest) {
   const { weekId, prizes } = body;
   await prisma.weekPrize.deleteMany({ where: { weekId } });
   const created = await Promise.all(
-    prizes.map((p: { rank: number; label: string; type: string; value?: number; unit?: string; minPurchase?: number; imageUrl?: string }) =>
+    prizes.map((p: { rank: number; label: string; description?: string; type: string; value?: number; unit?: string; minPurchase?: number; imageUrl?: string }) =>
       prisma.weekPrize.create({
-        data: { weekId, rank: p.rank, label: p.label, type: p.type, value: p.value, unit: p.unit, minPurchase: p.minPurchase, imageUrl: p.imageUrl },
+        data: { weekId, rank: p.rank, label: p.label, description: p.description, type: p.type, value: p.value, unit: p.unit, minPurchase: p.minPurchase, imageUrl: p.imageUrl },
       })
     )
   );

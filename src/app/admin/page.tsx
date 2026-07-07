@@ -6,7 +6,7 @@ interface ApiKey { id: string; name: string; key: string; description: string | 
 interface Winner { id: string; rank: number; code: string; claimed: boolean; claimedAt: string | null; user?: { name: string }; prize?: { label: string; value?: number; unit?: string } | null; }
 interface Match { id: string; homeTeam: string; awayTeam: string; groupName: string | null; status: string; homeScore: number | null; awayScore: number | null; totalShots: number | null; shotsOnGoal: number | null; saves: number | null; fouls: number | null; yellowCards: number | null; redCards: number | null; accuratePass: number | null; totalCross: number | null; substitutions: number | null; currentMinute: number | null; }
 interface User { id: string; name: string; whatsapp: string; city: string | null; createdAt: string; }
-interface PrizeConfig { rank: number; label: string; type: string; value?: number; unit?: string; minPurchase?: number; imageUrl?: string; }
+interface PrizeConfig { rank: number; label: string; description?: string; type: string; value?: number; unit?: string; minPurchase?: number; imageUrl?: string; }
 interface ValidationResult { valid: boolean; code: string; used: boolean; expiresAt: string; winner?: { name: string; whatsapp: string }; prize?: { label: string; value?: number; unit?: string; minPurchase?: number }; }
 type AdminTab = "ganadores" | "api-keys" | "validar" | "partidos" | "usuarios" | "premios";
 
@@ -211,7 +211,7 @@ function PrizesTab() {
       const data = await res.json();
       setWeek(data.week);
       if (data.prizes?.length) { setPrizes(data.prizes); }
-      else { setPrizes(Array.from({ length: 10 }, (_, i) => ({ rank: i + 1, label: "", type: "cash", value: i === 0 ? undefined : i === 1 ? 100000 : i === 2 ? 50000 : undefined, unit: "cop" }))); }
+      else { setPrizes(Array.from({ length: 10 }, (_, i) => ({ rank: i + 1, label: "", description: "", type: "cash", value: i === 0 ? undefined : i === 1 ? 100000 : i === 2 ? 50000 : undefined, unit: "cop" }))); }
     } catch {}
     setLoading(false);
   }, []);
@@ -238,7 +238,7 @@ function PrizesTab() {
       const res = await adminFetch("/api/admin/weeks", { method: "POST" });
       const data = await res.json();
       setWeek(data.week);
-      setPrizes(Array.from({ length: 10 }, (_, i) => ({ rank: i + 1, label: "", type: "cash", value: i === 0 ? undefined : i === 1 ? 100000 : i === 2 ? 50000 : undefined, unit: "cop" })));
+      setPrizes(Array.from({ length: 10 }, (_, i) => ({ rank: i + 1, label: "", description: "", type: "cash", value: i === 0 ? undefined : i === 1 ? 100000 : i === 2 ? 50000 : undefined, unit: "cop" })));
       setToast({ msg: "Semana creada", type: "ok" });
     } catch { setToast({ msg: "Error al crear semana", type: "err" }); }
     setSaving(false);
@@ -281,11 +281,18 @@ function PrizesTab() {
                 <div key={p.rank} className="admin-section space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="w-8 text-center font-black text-sm shrink-0" style={p.rank <= 3 ? { color: p.rank === 1 ? "#ffd700" : p.rank === 2 ? "#c0c0c0" : "#cd7f32" } : { color: "#ff69b4" }}>#{p.rank}</span>
-                    <input className="flex-1 admin-input" placeholder="Ej: Juguete, $100.000" value={p.label} onChange={(e) => updatePrize(p.rank, "label", e.target.value)} />
+                    <input className="flex-1 admin-input" placeholder={p.type === "toy" ? "Nombre del producto" : "Nombre del premio"} value={p.label} onChange={(e) => updatePrize(p.rank, "label", e.target.value)} />
                     <div className="w-32">
                       <AdminSelect value={p.type} options={[{ label: "Efectivo", value: "cash" }, { label: "Juguete", value: "toy" }, { label: "Descuento", value: "discount" }, { label: "Ticket", value: "free_ticket" }]} onChange={(v) => updatePrize(p.rank, "type", v)} />
                     </div>
-                    <input className="w-24 admin-input text-right" type="number" placeholder="Valor" value={p.value ?? ""} onChange={(e) => updatePrize(p.rank, "value", e.target.value ? Number(e.target.value) : undefined)} />
+                    {p.type !== "toy" ? (
+                      <input className="w-24 admin-input text-right" type="number" placeholder="Valor $" value={p.value ?? ""} onChange={(e) => updatePrize(p.rank, "value", e.target.value ? Number(e.target.value) : undefined)} />
+                    ) : (
+                      <input className="w-24 admin-input text-right" type="number" placeholder="Precio" value={p.value ?? ""} onChange={(e) => updatePrize(p.rank, "value", e.target.value ? Number(e.target.value) : undefined)} />
+                    )}
+                  </div>
+                  <div className="pl-10">
+                    <textarea className="admin-input w-full text-xs resize-none" rows={2} placeholder="Descripción del premio (opcional)" value={p.description ?? ""} onChange={(e) => updatePrize(p.rank, "description", e.target.value)} />
                   </div>
                   <div className="flex items-center gap-3 pl-10">
                     <label className="text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors" style={{ background: "rgba(255,20,147,0.15)", color: "#ff69b4", border: "1px solid rgba(255,20,147,0.25)" }}>

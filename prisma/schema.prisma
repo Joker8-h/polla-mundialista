@@ -207,8 +207,9 @@ model WeekPrize {
   weekId      String
   rank        Int      // 1-10
   label       String   // e.g., "Juguete", "$100.000", "10% dcto"
+  description String?  // detailed description of the prize
   type        String   // "toy", "cash", "discount", "free_ticket"
-  value       Int?     // monetary value for cash type
+  value       Int?     // monetary value for cash/discount type
   unit        String?  // "percent" for discounts
   minPurchase Int?     // minimum purchase for discounts
   imageUrl    String?  // Cloudinary image URL

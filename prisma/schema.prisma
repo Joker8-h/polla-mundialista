@@ -61,9 +61,9 @@ model Match {
   homeScore90  Int?   // Score at 90' (frozen when extra time starts)
   awayScore90  Int?
   winnerTeam   String? // "home" or "away" — who advanced (after ET/penalties)
-   decidedBy    String? // "regular", "extra_time", "penalties"
-   penaltyHome  Int?    // Penalty shootout score (home)
-   penaltyAway  Int?    // Penalty shootout score (away)
+  decidedBy    String? // "regular", "extra_time", "penalties"
+  penaltyHome  Int?    // Penalty shootout score (home)
+  penaltyAway  Int?    // Penalty shootout score (away)
    totalShots   Int?
   shotsOnGoal  Int?
   fouls        Int?

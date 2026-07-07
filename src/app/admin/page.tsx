@@ -10,6 +10,17 @@ interface PrizeConfig { rank: number; label: string; type: string; value?: numbe
 interface ValidationResult { valid: boolean; code: string; used: boolean; expiresAt: string; winner?: { name: string; whatsapp: string }; prize?: { label: string; value?: number; unit?: string; minPurchase?: number }; }
 type AdminTab = "ganadores" | "api-keys" | "validar" | "partidos" | "usuarios" | "premios";
 
+function adminFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const pw = sessionStorage.getItem("admin-pw");
+  return fetch(input, {
+    ...init,
+    headers: {
+      ...(init?.headers || {}),
+      ...(pw ? { "x-admin-password": pw } : {}),
+    },
+  });
+}
+
 function Toast({ msg, type, onClose }: { msg: string; type: "ok" | "err"; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
   return (
@@ -95,7 +106,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
-      if (res.ok) { setAuthed(true); localStorage.setItem("admin-auth", "true"); setAuthError(false); }
+      if (res.ok) { setAuthed(true); localStorage.setItem("admin-auth", "true"); sessionStorage.setItem("admin-pw", password); setAuthError(false); }
       else { setAuthError(true); }
     } catch {
       setAuthError(true);
@@ -163,7 +174,7 @@ export default function AdminPage() {
 function WinnersTab() {
   const [winners, setWinners] = useState<Winner[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { fetch("/api/admin/winners").then(r => r.json()).then(d => { setWinners(d.winners || []); setLoading(false); }).catch(() => setLoading(false)); }, []);
+  useEffect(() => { adminFetch("/api/admin/winners").then(r => r.json()).then(d => { setWinners(d.winners || []); setLoading(false); }).catch(() => setLoading(false)); }, []);
   if (loading) return <Spinner />;
   if (!winners.length) return <EmptyState icon="🏆" title="No hay ganadores aún" desc="Los ganadores aparecerán aquí cuando se cierre una semana." />;
   return (
@@ -196,7 +207,7 @@ function PrizesTab() {
 
   const fetchPrizes = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/prizes");
+      const res = await adminFetch("/api/admin/prizes");
       const data = await res.json();
       setWeek(data.week);
       if (data.prizes?.length) { setPrizes(data.prizes); }
@@ -215,7 +226,7 @@ function PrizesTab() {
     if (!week) return;
     setSaving(true);
     try {
-      await fetch("/api/admin/prizes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ weekId: week.id, prizes }) });
+      await adminFetch("/api/admin/prizes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ weekId: week.id, prizes }) });
       setToast({ msg: "Premios guardados correctamente", type: "ok" });
     } catch { setToast({ msg: "Error al guardar premios", type: "err" }); }
     setSaving(false);
@@ -224,7 +235,7 @@ function PrizesTab() {
   const createWeek = async () => {
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/weeks", { method: "POST" });
+      const res = await adminFetch("/api/admin/weeks", { method: "POST" });
       const data = await res.json();
       setWeek(data.week);
       setPrizes(Array.from({ length: 10 }, (_, i) => ({ rank: i + 1, label: "", type: "cash", value: i === 0 ? undefined : i === 1 ? 100000 : i === 2 ? 50000 : undefined, unit: "cop" })));
@@ -237,7 +248,7 @@ function PrizesTab() {
     const formData = new FormData();
     formData.append("image", file);
     try {
-      const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+      const res = await adminFetch("/api/admin/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (data.url) { updatePrize(rank, "imageUrl", data.url); setToast({ msg: "Imagen subida", type: "ok" }); }
       else { setToast({ msg: data.error || "Error al subir imagen", type: "err" }); }
@@ -305,7 +316,7 @@ function ApiKeysTab() {
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
 
   const fetchKeys = useCallback(async () => {
-    try { const res = await fetch("/api/admin/api-keys"); const data = await res.json(); setKeys(data.keys || []); } catch {}
+    try { const res = await adminFetch("/api/admin/api-keys"); const data = await res.json(); setKeys(data.keys || []); } catch {}
     setLoading(false);
   }, []);
 
@@ -313,12 +324,12 @@ function ApiKeysTab() {
 
   const createKey = async () => {
     if (!name) return;
-    await fetch("/api/admin/api-keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description: desc }) });
+    await adminFetch("/api/admin/api-keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description: desc }) });
     setName(""); setDesc(""); fetchKeys(); setToast({ msg: "API Key creada", type: "ok" });
   };
 
   const revokeKey = async (id: string) => {
-    await fetch(`/api/admin/api-keys/${id}`, { method: "DELETE" });
+    await adminFetch(`/api/admin/api-keys/${id}`, { method: "DELETE" });
     fetchKeys(); setConfirmRevoke(null); setToast({ msg: "API Key revocada", type: "ok" });
   };
 
@@ -376,7 +387,7 @@ function CodeValidatorTab() {
 
   const invalidate = async () => {
     try {
-      await fetch(`/api/admin/codes/${code}/invalidate`, { method: "POST" });
+      await adminFetch(`/api/admin/codes/${code}/invalidate`, { method: "POST" });
       setToast({ msg: "Código invalidado para tienda física", type: "ok" });
       setResult(null); setCode(""); setConfirmInvalidate(false);
     } catch { setToast({ msg: "Error al invalidar código", type: "err" }); }
@@ -432,7 +443,7 @@ function MatchesTab() {
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [filter, setFilter] = useState("all");
 
-  useEffect(() => { fetch("/api/admin/matches").then(r => r.json()).then(d => { setMatches(d.matches || []); setLoading(false); }).catch(() => setLoading(false)); }, []);
+  useEffect(() => { adminFetch("/api/admin/matches").then(r => r.json()).then(d => { setMatches(d.matches || []); setLoading(false); }).catch(() => setLoading(false)); }, []);
 
   const filtered = filter === "all" ? matches : matches.filter((m) => m.status === filter);
 
@@ -449,8 +460,8 @@ function MatchesTab() {
 
   const save = async (id: string) => {
     setSaving(true);
-    const res = await fetch(`/api/admin/matches/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    if (res.ok) { setToast({ msg: "Partido guardado", type: "ok" }); setEditing(null); fetch("/api/admin/matches").then(r => r.json()).then(d => setMatches(d.matches || [])); }
+    const res = await adminFetch(`/api/admin/matches/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (res.ok) { setToast({ msg: "Partido guardado", type: "ok" }); setEditing(null); adminFetch("/api/admin/matches").then(r => r.json()).then(d => setMatches(d.matches || [])); }
     else { setToast({ msg: "Error al guardar", type: "err" }); }
     setSaving(false);
   };
@@ -543,7 +554,7 @@ function UsersTab() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => { fetch("/api/admin/users").then(r => r.json()).then(d => { setUsers(d.users || []); setLoading(false); }).catch(() => setLoading(false)); }, []);
+  useEffect(() => { adminFetch("/api/admin/users").then(r => r.json()).then(d => { setUsers(d.users || []); setLoading(false); }).catch(() => setLoading(false)); }, []);
 
   const filtered = search ? users.filter((u) => u.name.toLowerCase().includes(search.toLowerCase()) || u.whatsapp.includes(search)) : users;
 
